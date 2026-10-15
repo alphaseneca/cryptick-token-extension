@@ -1,0 +1,25 @@
+{
+  "name": "cryptick-token-extension",
+  "version": "1.0.1",
+  "description": "Hardware passkeys and WebAuthn browser bridge for Cryptick Token",
+  "main": "background.js",
+  "scripts": {
+    "pack": "zip -r -FS cryptick-token-extension-v$npm_package_version.zip manifest.json background.js content.js injected.js popup.html popup.js icon-16.png icon-48.png icon-128.png icon.png -x '*.DS_Store*'",
+    "lint": "echo 'No lint errors'"
+  },
+  "keywords": [
+    "webauthn",
+    "fido2",
+    "passkeys",
+    "security-key",
+    "cryptick",
+    "hardware-token",
+    "totp"
+  ],
+  "author": "alphaseneca",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alphaseneca/cryptick-token-extension.git"
+  }
+}

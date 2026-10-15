@@ -1,0 +1,43 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Package Extension
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          zip -r -FS "cryptick-token-extension-${VERSION}.zip" \
+            manifest.json \
+            background.js \
+            content.js \
+            injected.js \
+            popup.html \
+            popup.js \
+            icon-16.png \
+            icon-48.png \
+            icon-128.png \
+            icon.png \
+            -x "*.DS_Store*"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Cryptick Token Extension ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            cryptick-token-extension-*.zip
