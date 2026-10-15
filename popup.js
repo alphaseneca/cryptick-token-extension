@@ -486,6 +486,8 @@ function renderPasskeyList(items, query = '') {
     actionsCol.style.alignItems = 'center';
     actionsCol.style.gap = '6px';
     actionsCol.style.flexShrink = '0';
+    actionsCol.style.minWidth = '95px';
+    actionsCol.style.justifyContent = 'flex-end';
 
     const badge = document.createElement('span');
     badge.className = 'm3-badge';
@@ -688,6 +690,8 @@ function renderTotpList(accounts) {
     const actionWrap = document.createElement('div');
     actionWrap.style.display = 'flex';
     actionWrap.style.alignItems = 'center';
+    actionWrap.style.flexShrink = '0';
+    actionWrap.style.marginLeft = '8px';
 
     const getBtn = document.createElement('button');
     getBtn.className = 'm3-btn-tonal';

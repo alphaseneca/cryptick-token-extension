@@ -103,10 +103,17 @@
       outline: none;
     }
 
-    body {
+    html, body {
       width: 360px;
+      max-width: 360px;
       min-height: 520px;
-      padding: 16px;
+      max-height: 600px;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+
+    body {
+      padding: 14px 16px;
       font-family: var(--md-sys-typescale-font);
       background: var(--md-sys-color-surface);
       color: var(--md-sys-color-on-surface);
@@ -117,18 +124,40 @@
       user-select: none;
     }
 
+    /* M3 Custom Precision Scrollbars */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+    }
+    *::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    *::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    *::-webkit-scrollbar-thumb {
+      background: var(--md-sys-color-outline-variant);
+      border-radius: 9999px;
+    }
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--md-sys-color-outline);
+    }
+
     /* M3 Top App Bar */
     .m3-top-app-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
     }
 
     .m3-brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      min-width: 0;
     }
 
     .m3-brand-icon {
@@ -136,21 +165,28 @@
       height: 28px;
       border-radius: var(--md-sys-shape-corner-small);
       box-shadow: var(--md-sys-elevation-1);
+      flex-shrink: 0;
     }
 
     .m3-headline-small {
-      font-size: 14.5px;
+      font-size: 14px;
       font-weight: 600;
-      line-height: 19px;
+      line-height: 18px;
       letter-spacing: -0.2px;
       color: var(--md-sys-color-on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .m3-body-small {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 400;
       line-height: 14px;
       color: var(--md-sys-color-on-surface-variant);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* M3 Status Badge / Filter Chip */
@@ -167,6 +203,8 @@
       font-weight: 500;
       letter-spacing: -0.1px;
       transition: all 0.2s var(--md-sys-motion-easing);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .m3-status-dot {
@@ -175,6 +213,7 @@
       border-radius: 50%;
       background: #9ca3af;
       transition: all 0.2s var(--md-sys-motion-easing);
+      flex-shrink: 0;
     }
 
     .m3-status-dot.green {
@@ -197,30 +236,35 @@
       display: flex;
       background: var(--md-sys-color-surface-container-high);
       border-radius: var(--md-sys-shape-corner-full);
-      padding: 3px;
-      margin-bottom: 14px;
-      gap: 3px;
+      padding: 2.5px;
+      margin-bottom: 12px;
+      gap: 2px;
       border: 1px solid var(--md-sys-color-outline-variant);
       box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
       position: relative;
+      flex-shrink: 0;
     }
 
     .m3-segmented-button {
       flex: 1;
+      min-width: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 8px 10px;
+      gap: 4px;
+      padding: 6.5px 4px;
       border: none;
       outline: none;
       border-radius: var(--md-sys-shape-corner-full);
       background: transparent;
       color: var(--md-sys-color-on-surface-variant);
       font-family: var(--md-sys-typescale-font);
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 500;
       letter-spacing: -0.15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       cursor: pointer;
       transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
       position: relative;
@@ -245,6 +289,7 @@
       height: 15px;
       fill: currentColor;
       transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      flex-shrink: 0;
     }
 
     .m3-segmented-button:hover {
@@ -289,6 +334,7 @@
       border: 1px solid var(--md-sys-color-outline-variant);
       border-radius: var(--md-sys-shape-corner-medium);
       transition: all 0.2s var(--md-sys-motion-easing);
+      min-width: 0;
     }
 
     .m3-clock-bar:hover {
@@ -300,6 +346,10 @@
       display: none;
       flex-direction: column;
       flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 1px;
     }
 
     .tab-content.active {
@@ -635,10 +685,11 @@
     }
 
     .m3-item-details.open {
-      max-height: 160px;
+      max-height: 280px;
       opacity: 1;
       padding: 8px 12px 10px;
       margin-bottom: 4px;
+      overflow-y: auto;
     }
 
     .m3-item-detail-row {
@@ -648,6 +699,7 @@
       font-size: 10.5px;
       padding: 2.5px 0;
       color: var(--md-sys-color-on-surface-variant);
+      min-width: 0;
     }
 
     .m3-item-detail-row strong {
@@ -747,14 +799,15 @@
       justify-content: center;
       gap: 6px;
       height: 34px;
-      padding: 0 14px;
+      padding: 0 12px;
       border-radius: var(--md-sys-shape-corner-full);
       background: var(--md-sys-color-secondary-container);
       color: var(--md-sys-color-on-secondary-container);
       font-family: var(--md-sys-typescale-font);
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 500;
       letter-spacing: -0.1px;
+      white-space: nowrap;
       border: none;
       cursor: pointer;
       transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
@@ -899,6 +952,7 @@
       flex-direction: column;
       gap: 3px;
       flex: 1;
+      min-width: 0;
     }
 
     .m3-device-title {
@@ -906,17 +960,23 @@
       font-weight: 600;
       color: var(--md-sys-color-on-surface);
       line-height: 17px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .m3-device-sub {
       font-size: 10.5px;
       color: var(--md-sys-color-on-surface-variant);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* M3 2x2 Capabilities Matrix */
     .m3-spec-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 8px;
       margin-bottom: 12px;
     }
@@ -929,6 +989,8 @@
       display: flex;
       flex-direction: column;
       gap: 3px;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .m3-spec-header {
@@ -956,11 +1018,17 @@
       font-size: 11px;
       font-weight: 600;
       color: var(--md-sys-color-on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .m3-spec-desc {
       font-size: 9px;
       color: var(--md-sys-color-outline);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Diagnostics Card */
@@ -984,6 +1052,38 @@
       font-size: 10px;
       line-height: 1.5;
       color: var(--md-sys-color-on-surface-variant);
+      max-height: 120px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    /* Telemetry rows */
+    .m3-telemetry-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      padding: 3px 0;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .m3-telemetry-label {
+      color: var(--md-sys-color-on-surface-variant);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .m3-telemetry-value {
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: right;
+      min-width: 0;
     }
 
     /* Empty state */
@@ -1133,10 +1233,10 @@
       <div class="m3-clock-bar">
         <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
           <div id="totpClockDot" class="m3-status-dot green" style="flex-shrink: 0;"></div>
-          <div style="display: flex; flex-direction: column; overflow: hidden;">
+          <div style="display: flex; flex-direction: column; overflow: hidden; min-width: 0;">
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span style="font-size: 11.5px; font-weight: 600; color: var(--md-sys-color-on-surface);">Hardware RTC</span>
-              <span id="totpClockBadge" class="m3-badge" style="padding: 1px 6px; font-size: 9px;">In Sync</span>
+              <span style="font-size: 11.5px; font-weight: 600; color: var(--md-sys-color-on-surface); white-space: nowrap;">Hardware RTC</span>
+              <span id="totpClockBadge" class="m3-badge" style="padding: 1px 6px; font-size: 9px; flex-shrink: 0;">In Sync</span>
             </div>
             <span id="totpClockReadout" style="font-size: 10px; color: var(--md-sys-color-on-surface-variant); font-family: var(--md-sys-typescale-code); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">UTC --:--:-- • Host In-Sync</span>
           </div>
@@ -1152,16 +1252,16 @@
           <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
           <input type="text" id="totpSearch" class="m3-search-input" placeholder="Search 2FA accounts...">
         </div>
-        <button id="totpScanBtn" class="m3-btn-filled" style="height: 40px; padding: 0 14px;">
+        <button id="totpScanBtn" class="m3-btn-filled" style="height: 40px; padding: 0 14px; flex-shrink: 0;">
           <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
           Scan
         </button>
       </div>
 
       <!-- Clock Sync Feedback Banner -->
-      <div id="totpSyncBanner" style="display: none; align-items: center; justify-content: space-between; background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-radius: var(--md-sys-shape-corner-medium); padding: 7px 12px; margin-bottom: 8px; font-size: 11px; font-weight: 500;">
-        <span id="totpSyncBannerText">✓ Hardware clock synchronized</span>
-        <span id="totpSyncBannerTime" style="font-family: var(--md-sys-typescale-code); font-size: 10px; opacity: 0.85;"></span>
+      <div id="totpSyncBanner" style="display: none; flex-direction: column; gap: 2px; background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-radius: var(--md-sys-shape-corner-medium); padding: 7px 10px; margin-bottom: 8px; font-size: 10.5px; font-weight: 500; overflow: hidden;">
+        <span id="totpSyncBannerText" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">✓ Hardware clock synchronized</span>
+        <span id="totpSyncBannerTime" style="font-family: var(--md-sys-typescale-code); font-size: 9.5px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
       </div>
 
       <div id="totpContainer" class="m3-list">
@@ -1276,37 +1376,37 @@
       <!-- Live System Telemetry Card -->
       <div class="m3-card" style="padding: 10px 14px; margin-bottom: 12px;">
         <div class="m3-section-title" style="margin-bottom: 6px;">Live Link Telemetry</div>
-        <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0;">
-          <span style="color: var(--md-sys-color-on-surface-variant);">Daemon Service</span>
-          <span id="telDaemon" style="font-weight: 600; color: var(--md-sys-color-on-surface);">Active</span>
+        <div class="m3-telemetry-row">
+          <span class="m3-telemetry-label">Daemon Service</span>
+          <span id="telDaemon" class="m3-telemetry-value">Active</span>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0;">
-          <span style="color: var(--md-sys-color-on-surface-variant);">Active Transport</span>
-          <span id="telInterface" style="font-weight: 600; color: var(--md-sys-color-on-surface);">Checking...</span>
+        <div class="m3-telemetry-row">
+          <span class="m3-telemetry-label">Active Transport</span>
+          <span id="telInterface" class="m3-telemetry-value">Checking...</span>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0;">
-          <span style="color: var(--md-sys-color-on-surface-variant);">Link Latency</span>
-          <span id="telLatency" style="font-weight: 600; font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-primary);">-- ms</span>
+        <div class="m3-telemetry-row">
+          <span class="m3-telemetry-label">Link Latency</span>
+          <span id="telLatency" class="m3-telemetry-value" style="font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-primary);">-- ms</span>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0;">
-          <span style="color: var(--md-sys-color-on-surface-variant);">Saved Passkeys</span>
-          <span id="telPasskeys" style="font-weight: 600; color: var(--md-sys-color-on-surface);">0 Stored</span>
+        <div class="m3-telemetry-row">
+          <span class="m3-telemetry-label">Saved Passkeys</span>
+          <span id="telPasskeys" class="m3-telemetry-value">0 Stored</span>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0;">
-          <span style="color: var(--md-sys-color-on-surface-variant);">Local Clock (Offset)</span>
-          <span id="telClock" style="font-weight: 600; font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-on-surface);">--:--:--</span>
+        <div class="m3-telemetry-row">
+          <span class="m3-telemetry-label">Local Clock (Offset)</span>
+          <span id="telClock" class="m3-telemetry-value" style="font-family: var(--md-sys-typescale-code);">--:--:--</span>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0;">
-          <span style="color: var(--md-sys-color-on-surface-variant);">Hardware UTC Time</span>
-          <span id="telUtcClock" style="font-weight: 600; font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-on-surface-variant);">--:--:-- UTC</span>
+        <div class="m3-telemetry-row">
+          <span class="m3-telemetry-label">Hardware UTC Time</span>
+          <span id="telUtcClock" class="m3-telemetry-value" style="font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-on-surface-variant);">--:--:-- UTC</span>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0;">
-          <span style="color: var(--md-sys-color-on-surface-variant);">Timezone Offset</span>
-          <span id="telTzOffset" style="font-weight: 600; font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-primary);">UTC+00:00</span>
+        <div class="m3-telemetry-row">
+          <span class="m3-telemetry-label">Timezone Offset</span>
+          <span id="telTzOffset" class="m3-telemetry-value" style="font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-primary);">UTC+00:00</span>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0;">
-          <span style="color: var(--md-sys-color-on-surface-variant);">Clock Drift / Offset</span>
-          <span id="telClockDrift" style="font-weight: 600; color: #10b981;">0.0s (Host Sync)</span>
+        <div class="m3-telemetry-row">
+          <span class="m3-telemetry-label">Clock Drift / Offset</span>
+          <span id="telClockDrift" class="m3-telemetry-value" style="color: #10b981;">0.0s (Host Sync)</span>
         </div>
       </div>
 
