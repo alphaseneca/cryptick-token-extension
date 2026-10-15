@@ -135,22 +135,35 @@ function applyStatus(res) {
 
   const latency = res && res.latencyMs ? `${res.latencyMs}ms` : (isUsb ? '< 1ms' : '12ms');
 
-  // Format UTC clock display
+  // Format UTC and Local clock display with offset
   const nowUtc = Math.floor(Date.now() / 1000);
   const clockUtc = (res && res.clockUtc) ? res.clockUtc : nowUtc;
   const isClockSynced = !!(res && res.clockSynced);
-  const dateObj = new Date(clockUtc * 1000);
-  const utcHours = String(dateObj.getUTCHours()).padStart(2, '0');
-  const utcMins = String(dateObj.getUTCMinutes()).padStart(2, '0');
-  const utcSecs = String(dateObj.getUTCSeconds()).padStart(2, '0');
-  const utcTimeStr = `${utcHours}:${utcMins}:${utcSecs} UTC`;
+  const tzOffsetStr = (res && res.tzOffsetStr) ? res.tzOffsetStr : getLocalTzOffset();
+  const timeOffsetSecs = (res && typeof res.timeOffsetSecs === 'number') ? res.timeOffsetSecs : 0;
+  currentClockOffsetSecs = timeOffsetSecs;
+  lastKnownUtc = clockUtc;
+  lastKnownUtcTimestamp = Date.now();
+
+  const timeInfo = formatTimeWithOffset(clockUtc, timeOffsetSecs);
+
+  const telUtcClock = document.getElementById('telUtcClock');
+  const telTzOffset = document.getElementById('telTzOffset');
+  const totpClockOffsetBadge = document.getElementById('totpClockOffsetBadge');
 
   if (telClock) {
-    telClock.textContent = isConnected ? utcTimeStr : '—';
+    telClock.textContent = isConnected ? `${timeInfo.localTime} (${tzOffsetStr})` : '—';
+  }
+  if (telUtcClock) {
+    telUtcClock.textContent = isConnected ? timeInfo.utcTime : '—';
+  }
+  if (telTzOffset) {
+    telTzOffset.textContent = isConnected ? tzOffsetStr : '—';
   }
   if (telClockDrift) {
     if (isConnected) {
-      telClockDrift.textContent = isClockSynced ? 'In Sync (< 1s)' : 'Drift detected';
+      const offsetDesc = timeOffsetSecs === 0 ? '0.0s (Host Sync)' : `${timeOffsetSecs > 0 ? '+' : ''}${timeOffsetSecs}s offset`;
+      telClockDrift.textContent = isClockSynced ? offsetDesc : 'Drift detected';
       telClockDrift.style.color = isClockSynced ? '#10b981' : '#f59e0b';
     } else {
       telClockDrift.textContent = '—';
@@ -164,7 +177,7 @@ function applyStatus(res) {
       totpClockBadge.textContent = isClockSynced ? 'In Sync' : 'Sync Needed';
       totpClockBadge.style.background = isClockSynced ? 'var(--md-sys-color-secondary-container)' : 'var(--md-sys-color-error-container)';
       totpClockBadge.style.color = isClockSynced ? 'var(--md-sys-color-on-secondary-container)' : 'var(--md-sys-color-on-error-container)';
-      totpClockReadout.textContent = `${utcTimeStr} • ${isClockSynced ? 'Host UTC Match' : 'Click Sync Clock'}`;
+      totpClockReadout.textContent = `${timeInfo.utcTime} • Host In-Sync`;
     } else {
       totpClockDot.className = 'm3-status-dot yellow';
       totpClockBadge.textContent = 'Offline';
@@ -697,7 +710,10 @@ async function fetchTotpCode(name, container, origBtn) {
   origBtn.disabled = true;
 
   try {
-    const res = await chrome.runtime.sendMessage({ action: 'totp_code', payload: { name } });
+    const res = await chrome.runtime.sendMessage({
+      action: 'totp_code',
+      payload: { name }
+    });
     if (res && res.status === 'ok' && res.code) {
       container.innerHTML = '';
       const box = document.createElement('div');
@@ -848,18 +864,29 @@ async function syncClock(btn) {
 
   try {
     const res = await chrome.runtime.sendMessage({ action: 'sync_time' });
-    const nowUtcDate = new Date();
-    const utcHours = String(nowUtcDate.getUTCHours()).padStart(2, '0');
-    const utcMins = String(nowUtcDate.getUTCMinutes()).padStart(2, '0');
-    const utcSecs = String(nowUtcDate.getUTCSeconds()).padStart(2, '0');
-    const nowStr = `${utcHours}:${utcMins}:${utcSecs} UTC`;
+    const nowUtc = (res && res.clockUtc) ? res.clockUtc : Math.floor(Date.now() / 1000);
+    const tzStr = (res && res.tzOffsetStr) ? res.tzOffsetStr : getLocalTzOffset();
+    const timeInfo = formatTimeWithOffset(nowUtc, 0);
+    currentClockOffsetSecs = 0;
+    lastKnownUtc = nowUtc;
+    lastKnownUtcTimestamp = Date.now();
 
     if (res && res.status === 'ok') {
+      const telUtcClock = document.getElementById('telUtcClock');
+      const telTzOffset = document.getElementById('telTzOffset');
+      const totpClockOffsetBadge = document.getElementById('totpClockOffsetBadge');
+
       if (telClock) {
-        telClock.textContent = nowStr;
+        telClock.textContent = `${timeInfo.localTime} (${tzStr})`;
+      }
+      if (telUtcClock) {
+        telUtcClock.textContent = timeInfo.utcTime;
+      }
+      if (telTzOffset) {
+        telTzOffset.textContent = tzStr;
       }
       if (telClockDrift) {
-        telClockDrift.textContent = 'In Sync (< 1s)';
+        telClockDrift.textContent = '0.0s (Host Sync)';
         telClockDrift.style.color = '#10b981';
       }
       if (totpClockDot) totpClockDot.className = 'm3-status-dot green';
@@ -869,11 +896,11 @@ async function syncClock(btn) {
         totpClockBadge.style.color = '';
       }
       if (totpClockReadout) {
-        totpClockReadout.textContent = `${nowStr} • Host Match`;
+        totpClockReadout.textContent = `${timeInfo.utcTime} • Host In-Sync`;
       }
       if (bannerEl && bannerText) {
-        bannerText.textContent = '✓ Hardware RTC & soft clock synced to Host UTC';
-        if (bannerTime) bannerTime.textContent = nowStr;
+        bannerText.textContent = `✓ Hardware RTC & soft clock synced to Host (${tzStr})`;
+        if (bannerTime) bannerTime.textContent = `${timeInfo.localTime} (${tzStr}) • ${timeInfo.utcTime}`;
         bannerEl.style.display = 'flex';
         setTimeout(() => {
           bannerEl.style.display = 'none';
@@ -950,7 +977,29 @@ document.addEventListener('DOMContentLoaded', () => {
     checkStatus(false);
     updatePasskeyCount();
   }, 1500);
-  window.addEventListener('beforeunload', () => clearInterval(statusInterval));
+
+  // Live 1-second clock ticker for silky real-time countdown & time display
+  const clockTicker = setInterval(() => {
+    if (!lastConnectionState) return;
+    const nowMs = Date.now();
+    const elapsedSecs = Math.floor((nowMs - lastKnownUtcTimestamp) / 1000);
+    const simulatedUtc = (lastKnownUtc || Math.floor(nowMs / 1000)) + elapsedSecs;
+    const info = formatTimeWithOffset(simulatedUtc, currentClockOffsetSecs);
+    const tzStr = getLocalTzOffset();
+
+    const telClock = document.getElementById('telClock');
+    const telUtcClock = document.getElementById('telUtcClock');
+    const totpClockReadout = document.getElementById('totpClockReadout');
+
+    if (telClock) telClock.textContent = `${info.localTime} (${tzStr})`;
+    if (telUtcClock) telUtcClock.textContent = info.utcTime;
+    if (totpClockReadout) totpClockReadout.textContent = `${info.utcTime} • Host In-Sync`;
+  }, 1000);
+
+  window.addEventListener('beforeunload', () => {
+    clearInterval(statusInterval);
+    clearInterval(clockTicker);
+  });
 
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) refreshBtn.addEventListener('click', () => checkStatus(true));
