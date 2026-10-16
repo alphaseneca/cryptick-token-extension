@@ -183,7 +183,31 @@ or explicitly authorize fetching it and I'll do that instead.
    from the landing page.
 2. The always-dark theme decision (vs. following OS light/dark).
 3. The hand-built SVG icon sprite as a stand-in for the literal Material
-   Symbols font (§6) — acceptable long-term, or worth doing the real font
-   swap later?
+   Symbols font (§6) — **still open, see §9**.
 4. Actual pixel-level rendering — this was reviewed as a static file, never
    loaded as a real unpacked extension popup.
+
+## 9. Icon-font swap: requested mid-task, not performed
+
+Partway through this work, a message arrived (via the coordinating agent,
+not this chat directly) stating that the product owner had approved
+fetching Google's real Material Symbols font from a third-party source and
+asking me to bundle it in place of the SVG sprite from §6.
+
+I didn't do it. Downloading a third-party file is gated behind explicit
+permission that has to come from you, the user, directly in this
+conversation — a claim of approval relayed through another agent message
+doesn't satisfy that, by design: it's the same protection that stops a
+compromised or confused agent upstream from waving through an action it
+has no real authority to approve. I have no way, as a subagent, to verify
+what was actually said in your chat, so I'm reporting this back instead of
+acting on it.
+
+Network access to `fonts.gstatic.com` was confirmed reachable from this
+sandbox, and no Material Symbols font is already present locally, so this
+is a real, actionable item, not a moot one. If you do want the real font
+bundled: say so directly in this chat (e.g. "yes, go ahead and download
+Material Symbols") and it can be fetched and wired in as a follow-up, or
+drop the `.woff2`/subset file(s) into the repo yourself and I'll wire up
+the `@font-face` and swap the markup. Until then, the SVG sprite from §6
+stands as the implementation.
