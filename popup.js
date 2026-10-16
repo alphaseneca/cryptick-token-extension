@@ -1,104 +1,72 @@
-// Cryptick Token - Material Design 3 / SwiftUI Popup Controller
+// Cryptick Token - Popup Controller
+//
+// This file is a thin presentation layer. It never computes or caches
+// cryptographic material: TOTP codes, passkey assertions, and signatures all
+// come back pre-computed from the native host / hardware token, and every
+// field rendered below traces back to an actual field in that response.
+// See ../cryptick-token-daemon/docs/ARCHITECTURE.md #2 (Zero-Trust Passer
+// Principle) -- nothing here should drift from that boundary.
+//
+// browser.* / chrome.* : Firefox implements the `chrome` namespace as an
+// alias for its own `browser` APIs for everything this file uses
+// (runtime.sendMessage, storage.local, tabs, runtime.getManifest), so a
+// single `chrome.*` call site works unmodified on both targets.
+
 let allTotpAccounts = [];
 let allPasskeys = [];
 let activeCountdownIntervals = {};
 let lastConnectionState = null;
-let currentClockOffsetSecs = 0;
-let lastKnownUtc = 0;
-let lastKnownUtcTimestamp = 0;
 
-function getLocalTzOffset() {
-  const offsetMin = -new Date().getTimezoneOffset();
-  const sign = offsetMin >= 0 ? '+' : '-';
-  const abs = Math.abs(offsetMin);
-  const h = String(Math.floor(abs / 60)).padStart(2, '0');
-  const m = String(abs % 60).padStart(2, '0');
-  return `UTC${sign}${h}:${m}`;
-}
-
-function formatTimeWithOffset(utcSecs, offsetSecs = 0) {
-  const effectiveSecs = (utcSecs || Math.floor(Date.now() / 1000)) + offsetSecs;
-  const d = new Date(effectiveSecs * 1000);
-  const locH = String(d.getHours()).padStart(2, '0');
-  const locM = String(d.getMinutes()).padStart(2, '0');
-  const locS = String(d.getSeconds()).padStart(2, '0');
-  const localTime = `${locH}:${locM}:${locS}`;
-
-  const utcH = String(d.getUTCHours()).padStart(2, '0');
-  const utcM = String(d.getUTCMinutes()).padStart(2, '0');
-  const utcS = String(d.getUTCSeconds()).padStart(2, '0');
-  const utcTime = `${utcH}:${utcM}:${utcS} UTC`;
-
-  const tz = getLocalTzOffset();
-  return {
-    localTime,
-    utcTime,
-    tzOffset: tz,
-    fullDisplay: `${localTime} (${tz}) • ${utcTime}`
-  };
-}
-
-// 1. Tab Navigation (M3 / SwiftUI Segmented Button Group)
+// ---------------------------------------------------------------------------
+// 1. Tab navigation
+// ---------------------------------------------------------------------------
 function initTabs() {
-  const tabs = document.querySelectorAll('.m3-segmented-button');
+  const tabs = document.querySelectorAll('.ct-tab');
   tabs.forEach(btn => {
     btn.addEventListener('click', () => {
-      tabs.forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      tabs.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+      document.querySelectorAll('.ct-pane').forEach(c => c.classList.remove('active'));
 
       btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
       const targetId = btn.getAttribute('data-tab');
       const content = document.getElementById(targetId);
       if (content) content.classList.add('active');
 
       if (targetId === 'tab-totp') {
-        if (lastConnectionState) {
-          loadTotpAccounts();
-        }
+        if (lastConnectionState) loadTotpAccounts();
       } else if (targetId === 'tab-passkeys') {
-        if (lastConnectionState) {
-          loadPasskeyHistory();
-        }
+        if (lastConnectionState) loadPasskeyHistory();
       } else if (targetId === 'tab-device') {
         checkStatus();
-        updatePasskeyCount();
       }
     });
   });
 }
 
-// 2. Hardware Status & Telemetry
+// ---------------------------------------------------------------------------
+// 2. Hardware status
+//    Every value used here is a real field from the native host's status
+//    response (status/usb/inRange/bonded/daemonRunning/transport/latencyMs/
+//    clockSynced/message) -- nothing is invented for visual effect.
+// ---------------------------------------------------------------------------
+function setIcon(svgEl, symbolId) {
+  if (!svgEl) return;
+  const use = svgEl.querySelector('use');
+  if (use) use.setAttribute('href', `#${symbolId}`);
+}
+
 function applyStatus(res) {
   const connDot = document.getElementById('connDot');
   const connText = document.getElementById('connText');
-  const devSub = document.getElementById('devSub');
-  const devPillDot = document.getElementById('devPillDot');
-  const devPillText = document.getElementById('devPillText');
-  const devTransport = document.getElementById('devTransport');
-  const devTransportDesc = document.getElementById('devTransportDesc');
-  const devEnclave = document.getElementById('devEnclave');
-  const devEnclaveDesc = document.getElementById('devEnclaveDesc');
-  const devVerify = document.getElementById('devVerify');
-  const devVerifyDesc = document.getElementById('devVerifyDesc');
-  const devPiv = document.getElementById('devPiv');
-  const devPivDesc = document.getElementById('devPivDesc');
-  const telDaemon = document.getElementById('telDaemon');
-  const telInterface = document.getElementById('telInterface');
-  const telLatency = document.getElementById('telLatency');
-  const telClock = document.getElementById('telClock');
-  const telClockDrift = document.getElementById('telClockDrift');
-  const totpClockDot = document.getElementById('totpClockDot');
-  const totpClockBadge = document.getElementById('totpClockBadge');
-  const totpClockReadout = document.getElementById('totpClockReadout');
-
   if (!connDot || !connText) return;
 
   const isUsb = !!(res && res.status === 'ok' && res.usb);
   const isInRange = !!(res && res.status === 'ok' && res.inRange);
   const isConnected = isUsb || isInRange;
   const isHostOnline = !!(res && res.status === 'ok');
+  const isBootloader = !!(res && res.message && res.message.toLowerCase().includes('bootloader'));
 
-  // Toggle Disconnected vs Connected views (Zero credential exposure when unplugged)
   const passkeyDisc = document.getElementById('passkeyDisconnected');
   const passkeyConn = document.getElementById('passkeyConnected');
   const totpDisc = document.getElementById('totpDisconnected');
@@ -108,168 +76,116 @@ function applyStatus(res) {
 
   if (passkeyDisc && passkeyConn) {
     passkeyDisc.style.display = isConnected ? 'none' : 'flex';
-    passkeyConn.style.display = isConnected ? 'block' : 'none';
+    passkeyConn.style.display = isConnected ? 'flex' : 'none';
   }
   if (totpDisc && totpConn) {
     totpDisc.style.display = isConnected ? 'none' : 'flex';
-    totpConn.style.display = isConnected ? 'block' : 'none';
+    totpConn.style.display = isConnected ? 'flex' : 'none';
   }
   if (deviceDisc && deviceConn) {
     deviceDisc.style.display = isConnected ? 'none' : 'flex';
-    deviceConn.style.display = isConnected ? 'block' : 'none';
+    deviceConn.style.display = isConnected ? 'flex' : 'none';
   }
 
-  // Auto-refresh data on initial connection transition
+  // On the transition into "connected," proactively sync the hardware clock
+  // and refresh whichever tab is active -- the daemon already does the sync
+  // work; we're just the ones kicking it off.
   if (isConnected && lastConnectionState === false) {
-    // Auto-sync hardware RTC immediately when token connects
     syncClock();
-    const activeTab = document.querySelector('.m3-segmented-button.active');
+    const activeTab = document.querySelector('.ct-tab.active');
     const activeTabId = activeTab ? activeTab.getAttribute('data-tab') : null;
-    if (activeTabId === 'tab-totp') {
-      loadTotpAccounts();
-    } else if (activeTabId === 'tab-passkeys') {
-      loadPasskeyHistory();
-    }
+    if (activeTabId === 'tab-totp') loadTotpAccounts();
+    else if (activeTabId === 'tab-passkeys') loadPasskeyHistory();
   }
   lastConnectionState = isConnected;
 
-  const latency = res && res.latencyMs ? `${res.latencyMs}ms` : (isUsb ? '< 1ms' : '12ms');
-
-  // Format UTC and Local clock display with offset
-  const nowUtc = Math.floor(Date.now() / 1000);
-  const clockUtc = (res && res.clockUtc) ? res.clockUtc : nowUtc;
+  const totpClockDot = document.getElementById('totpClockDot');
+  const totpClockBadge = document.getElementById('totpClockBadge');
+  const devClockDot = document.getElementById('devClockDot');
+  const devClockDesc = document.getElementById('devClockDesc');
   const isClockSynced = !!(res && res.clockSynced);
-  const tzOffsetStr = (res && res.tzOffsetStr) ? res.tzOffsetStr : getLocalTzOffset();
-  const timeOffsetSecs = (res && typeof res.timeOffsetSecs === 'number') ? res.timeOffsetSecs : 0;
-  currentClockOffsetSecs = timeOffsetSecs;
-  lastKnownUtc = clockUtc;
-  lastKnownUtcTimestamp = Date.now();
 
-  const timeInfo = formatTimeWithOffset(clockUtc, timeOffsetSecs);
-
-  const telUtcClock = document.getElementById('telUtcClock');
-  const telTzOffset = document.getElementById('telTzOffset');
-  const totpClockOffsetBadge = document.getElementById('totpClockOffsetBadge');
-
-  if (telClock) {
-    telClock.textContent = isConnected ? `${timeInfo.localTime} (${tzOffsetStr})` : '—';
-  }
-  if (telUtcClock) {
-    telUtcClock.textContent = isConnected ? timeInfo.utcTime : '—';
-  }
-  if (telTzOffset) {
-    telTzOffset.textContent = isConnected ? tzOffsetStr : '—';
-  }
-  if (telClockDrift) {
+  if (totpClockDot && totpClockBadge) {
     if (isConnected) {
-      const offsetDesc = timeOffsetSecs === 0 ? '0.0s (Host Sync)' : `${timeOffsetSecs > 0 ? '+' : ''}${timeOffsetSecs}s offset`;
-      telClockDrift.textContent = isClockSynced ? offsetDesc : 'Drift detected';
-      telClockDrift.style.color = isClockSynced ? '#10b981' : '#f59e0b';
+      totpClockDot.className = isClockSynced ? 'ct-dot green' : 'ct-dot yellow';
+      totpClockBadge.textContent = isClockSynced ? 'In sync' : 'Sync needed';
     } else {
-      telClockDrift.textContent = '—';
-      telClockDrift.style.color = 'var(--md-sys-color-on-surface-variant)';
+      totpClockDot.className = 'ct-dot yellow';
+      totpClockBadge.textContent = 'Token disconnected';
+    }
+  }
+  if (devClockDot && devClockDesc) {
+    if (isConnected) {
+      devClockDot.className = isClockSynced ? 'ct-dot green' : 'ct-dot yellow';
+      devClockDesc.textContent = isClockSynced ? 'In sync with this computer' : 'Needs a sync for accurate 2FA codes';
+    } else {
+      devClockDot.className = 'ct-dot yellow';
+      devClockDesc.textContent = 'Connect your token to sync';
     }
   }
 
-  if (totpClockDot && totpClockBadge && totpClockReadout) {
-    if (isConnected) {
-      totpClockDot.className = isClockSynced ? 'm3-status-dot green' : 'm3-status-dot yellow';
-      totpClockBadge.textContent = isClockSynced ? 'In Sync' : 'Sync Needed';
-      totpClockBadge.style.background = isClockSynced ? 'var(--md-sys-color-secondary-container)' : 'var(--md-sys-color-error-container)';
-      totpClockBadge.style.color = isClockSynced ? 'var(--md-sys-color-on-secondary-container)' : 'var(--md-sys-color-on-error-container)';
-      totpClockReadout.textContent = `${timeInfo.utcTime} • Host In-Sync`;
-    } else {
-      totpClockDot.className = 'm3-status-dot yellow';
-      totpClockBadge.textContent = 'Offline';
-      totpClockReadout.textContent = 'Token Disconnected';
-    }
-  }
+  // Device tab: connection detail rows, built only from real fields.
+  const devTransport = document.getElementById('devTransport');
+  const devTransportIcon = document.getElementById('devTransportIcon');
+  const devPairRow = document.getElementById('devPairRow');
+  const devPair = document.getElementById('devPair');
+  const devLatencyRow = document.getElementById('devLatencyRow');
+  const devLatency = document.getElementById('devLatency');
+  const devService = document.getElementById('devService');
+  const devSub = document.getElementById('devSub');
+  const devPillDot = document.getElementById('devPillDot');
+  const devPillText = document.getElementById('devPillText');
+
+  if (devService) devService.textContent = (res && res.daemonRunning) ? 'Running' : 'Not running';
 
   if (isUsb) {
-    // Direct USB 2.0 Mode
-    connDot.className = 'm3-status-dot green';
-    connText.textContent = 'USB Connected';
-    if (devSub) devSub.textContent = 'Direct USB 2.0 • ESP32-S3 Hardware';
-    if (devPillDot) devPillDot.className = 'm3-status-dot green';
-    if (devPillText) devPillText.textContent = 'Direct USB Active';
-    if (devTransport) devTransport.textContent = 'Direct USB';
-    if (devTransportDesc) devTransportDesc.textContent = `Latency: ${latency} • 0x1209:0xBEEE`;
-    if (devEnclave) devEnclave.textContent = 'Hardware AES-GCM';
-    if (devEnclaveDesc) devEnclaveDesc.textContent = 'LittleFS Active (USB Direct)';
-    if (devVerify) devVerify.textContent = 'Touch & Biometric';
-    if (devVerifyDesc) devVerifyDesc.textContent = 'UP Sensor Ready';
-    if (devPiv) devPiv.textContent = 'Slot 9A Ready';
-    if (devPivDesc) devPivDesc.textContent = 'CryptoTokenKit Available';
-
-    if (telDaemon) telDaemon.textContent = 'Bypassed (Direct USB)';
-    if (telInterface) telInterface.textContent = 'USB 2.0 CTAPHID';
-    if (telLatency) telLatency.textContent = latency;
+    setIcon(devTransportIcon, 'ic-usb');
+    if (devTransport) devTransport.textContent = 'USB';
+    if (devPairRow) devPairRow.hidden = true;
+    if (devLatencyRow) devLatencyRow.hidden = !(res && res.latencyMs);
+    if (devLatency && res && res.latencyMs) devLatency.textContent = `${res.latencyMs} ms`;
+    if (devSub) devSub.textContent = 'Connected over USB';
+    if (devPillDot) devPillDot.className = 'ct-dot green';
+    if (devPillText) devPillText.textContent = 'Active';
   } else if (isInRange) {
-    // Wireless BLE Daemon Bridge Mode
-    connDot.className = 'm3-status-dot green';
-    connText.textContent = 'BLE Wireless';
-    if (devSub) devSub.textContent = 'Wireless Daemon Bridge • Custom GATT Link';
-    if (devPillDot) devPillDot.className = 'm3-status-dot green';
-    if (devPillText) devPillText.textContent = 'Wireless BLE Active';
-    if (devTransport) devTransport.textContent = 'Custom BLE';
-    if (devTransportDesc) devTransportDesc.textContent = `Latency: ${latency} • Daemon GATT`;
-    if (devEnclave) devEnclave.textContent = 'Hardware AES-GCM';
-    if (devEnclaveDesc) devEnclaveDesc.textContent = 'LittleFS Active (Encrypted)';
-    if (devVerify) devVerify.textContent = 'Touch & Biometric';
-    if (devVerifyDesc) devVerifyDesc.textContent = 'BLE User Presence Active';
-    if (devPiv) devPiv.textContent = 'Slot 9A Ready';
-    if (devPivDesc) devPivDesc.textContent = 'CryptoTokenKit Available';
-
-    if (telDaemon) telDaemon.textContent = 'Active (Connected)';
-    if (telInterface) telInterface.textContent = 'Daemon GATT (FBF6EB80)';
-    if (telLatency) telLatency.textContent = latency;
+    setIcon(devTransportIcon, 'ic-bluetooth');
+    if (devTransport) devTransport.textContent = 'Bluetooth';
+    if (devPairRow) devPairRow.hidden = false;
+    if (devPair) devPair.textContent = (res && res.bonded) ? 'Paired' : 'Not paired';
+    if (devLatencyRow) devLatencyRow.hidden = !(res && res.latencyMs);
+    if (devLatency && res && res.latencyMs) devLatency.textContent = `${res.latencyMs} ms`;
+    if (devSub) devSub.textContent = 'Connected over Bluetooth';
+    if (devPillDot) devPillDot.className = 'ct-dot green';
+    if (devPillText) devPillText.textContent = 'Active';
   } else if (isHostOnline) {
-    // Disconnected / Waiting for Token
-    connDot.className = 'm3-status-dot yellow';
-    if (res && res.message && res.message.includes('bootloader')) {
-      connText.textContent = 'ROM Bootloader';
-      if (devSub) devSub.textContent = 'ESP32 in Recovery Mode (0x303A:0x1001)';
-      if (devPillDot) devPillDot.className = 'm3-status-dot yellow';
-      if (devPillText) devPillText.textContent = 'Bootloader Active';
-      if (devTransport) devTransport.textContent = 'USB Serial/JTAG';
-      if (devTransportDesc) devTransportDesc.textContent = 'Flash product firmware to enable CTAPHID';
-    } else {
-      connText.textContent = 'No Key Inserted';
-      if (devSub) devSub.textContent = 'Plug into USB or wake Bluetooth';
-      if (devPillDot) devPillDot.className = 'm3-status-dot yellow';
-      if (devPillText) devPillText.textContent = 'Token Disconnected';
-      if (devTransport) devTransport.textContent = 'Disconnected';
-      if (devTransportDesc) devTransportDesc.textContent = 'Scanning USB & BLE...';
-    }
-    if (devEnclave) devEnclave.textContent = 'Protected at Rest';
-    if (devEnclaveDesc) devEnclaveDesc.textContent = 'Keys Locked in Flash';
-    if (devVerify) devVerify.textContent = 'Sensor Idle';
-    if (devVerifyDesc) devVerifyDesc.textContent = 'Waiting for Link';
-    if (devPiv) devPiv.textContent = 'Slot 9A Ready';
-    if (devPivDesc) devPivDesc.textContent = 'Ready on Reconnect';
-
-    if (telDaemon) telDaemon.textContent = 'Active (Scanning)';
-    if (telInterface) telInterface.textContent = res && res.message && res.message.includes('bootloader') ? 'USB CDC (303A:1001)' : 'None';
-    if (telLatency) telLatency.textContent = '—';
+    if (devTransport) devTransport.textContent = 'None';
+    if (devPairRow) devPairRow.hidden = true;
+    if (devLatencyRow) devLatencyRow.hidden = true;
+    if (devSub) devSub.textContent = isBootloader ? 'Waiting -- reflash firmware to continue' : 'Plug in or wake over Bluetooth';
+    if (devPillDot) devPillDot.className = 'ct-dot yellow';
+    if (devPillText) devPillText.textContent = 'Not detected';
   } else {
-    // Host Offline
-    connDot.className = 'm3-status-dot red';
-    connText.textContent = 'Host Offline';
-    if (devSub) devSub.textContent = 'Local daemon service unreachable';
-    if (devPillDot) devPillDot.className = 'm3-status-dot red';
-    if (devPillText) devPillText.textContent = 'Host Bridge Offline';
-    if (devTransport) devTransport.textContent = 'Host Offline';
-    if (devTransportDesc) devTransportDesc.textContent = 'Launch daemon to connect';
-    if (devEnclave) devEnclave.textContent = 'Unavailable';
-    if (devEnclaveDesc) devEnclaveDesc.textContent = 'Daemon not running';
-    if (devVerify) devVerify.textContent = 'Unavailable';
-    if (devVerifyDesc) devVerifyDesc.textContent = 'Host Offline';
-    if (devPiv) devPiv.textContent = 'Unavailable';
-    if (devPivDesc) devPivDesc.textContent = 'Host Offline';
+    if (devTransport) devTransport.textContent = 'None';
+    if (devPairRow) devPairRow.hidden = true;
+    if (devLatencyRow) devLatencyRow.hidden = true;
+    if (devSub) devSub.textContent = 'Bridge service unreachable';
+    if (devPillDot) devPillDot.className = 'ct-dot red';
+    if (devPillText) devPillText.textContent = 'Offline';
+  }
 
-    if (telDaemon) telDaemon.textContent = 'Offline (launchd)';
-    if (telInterface) telInterface.textContent = 'Offline';
-    if (telLatency) telLatency.textContent = '—';
+  // Top bar chip mirrors the same four states.
+  if (isUsb) {
+    connDot.className = 'ct-dot green';
+    connText.textContent = 'USB connected';
+  } else if (isInRange) {
+    connDot.className = 'ct-dot green';
+    connText.textContent = 'Bluetooth connected';
+  } else if (isHostOnline) {
+    connDot.className = 'ct-dot yellow';
+    connText.textContent = isBootloader ? 'Needs firmware' : 'No key inserted';
+  } else {
+    connDot.className = 'ct-dot red';
+    connText.textContent = 'Bridge offline';
   }
 }
 
@@ -282,98 +198,19 @@ async function checkStatus(forceFresh = false) {
   }
 }
 
-function updatePasskeyCount() {
-  const telPasskeys = document.getElementById('telPasskeys');
-  if (!telPasskeys) return;
-  chrome.storage.local.get(['cryptick_passkeys_history'], (data) => {
-    const count = (data.cryptick_passkeys_history || []).length;
-    telPasskeys.textContent = `${count} Stored`;
-  });
-}
-
-// 3. Hardware Self-Diagnostics
-async function runDiagnostics(isDisc = false) {
-  const diagBtn = document.getElementById(isDisc ? 'runDiagBtnDisc' : 'runDiagBtn');
-  const diagResult = document.getElementById(isDisc ? 'diagResultDisc' : 'diagResult');
-  if (!diagBtn || !diagResult) return;
-
-  diagBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" style="animation: spin 1s linear infinite;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-    Testing...
-  `;
-  diagBtn.disabled = true;
-  diagResult.style.display = 'block';
-  diagResult.innerHTML = '<span style="color:var(--md-sys-color-primary);">Pinging native host and hardware channel...</span>';
-
-  const t0 = performance.now();
-  try {
-    const res = await chrome.runtime.sendMessage({ action: 'status', forceFresh: true });
-    const elapsed = Math.round(performance.now() - t0);
-
-    if (res && res.status === 'ok') {
-      const isUsb = !!res.usb;
-      const isInRange = !!res.inRange;
-      if (isUsb) {
-        diagResult.innerHTML = `
-          <span style="color:#10b981;">✓ Interface: Direct USB 2.0 CTAPHID</span><br>
-          <span style="color:#10b981;">✓ Channel Latency: ${elapsed}ms (&lt; 1ms bus time)</span><br>
-          <span style="color:#10b981;">✓ Hardware State: Link Healthy & Authenticated</span><br>
-          <span style="color:#10b981;">✓ Cryptographic Engine: AES-GCM / SHA-256 Ready</span><br>
-          <span style="color:#10b981;">✓ Secure Enclave: LittleFS Partition Mounted</span>
-        `;
-      } else if (isInRange) {
-        diagResult.innerHTML = `
-          <span style="color:#10b981;">✓ Interface: Wireless BLE Bridge (Daemon GATT)</span><br>
-          <span style="color:#10b981;">✓ Channel Latency: ${elapsed}ms (Roundtrip)</span><br>
-          <span style="color:#10b981;">✓ Daemon Link: Connected & Bonded</span><br>
-          <span style="color:#10b981;">✓ Cryptographic Engine: ECC P-256 / SHA-256 Ready</span><br>
-          <span style="color:#10b981;">✓ Secure Enclave: LittleFS Partition Mounted</span>
-        `;
-      } else {
-        diagResult.innerHTML = `
-          <span style="color:#10b981;">✓ Host Bridge Service: Active</span><br>
-          <span style="color:#f59e0b;">⚠️ Hardware Token: Not connected</span><br>
-          <span style="opacity:0.8;">Action: Plug token into USB or wake via touch sensor.</span>
-        `;
-      }
-    } else {
-      diagResult.innerHTML = `<span style="color:#ef4444;">✕ Diagnostic Refusal: ${res?.message || 'Host offline'}</span>`;
-    }
-  } catch (e) {
-    diagResult.innerHTML = `<span style="color:#ef4444;">✕ Communication Error: ${e.message}</span>`;
-  } finally {
-    diagBtn.innerHTML = `
-      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      Self-Test
-    `;
-    diagBtn.disabled = false;
-  }
-}
-
-// 4. Passkey Interception Toggle & Resident Key Vault Management
+// ---------------------------------------------------------------------------
+// 3. Platform Passkey Delegation toggle + recent sign-in activity
+//    (ARCHITECTURE.md #3 "Platform Passkey Delegation" escape hatch --
+//    this must stay user-controllable.)
+// ---------------------------------------------------------------------------
 function initPasskeyTab() {
   const toggle = document.getElementById('bridgeToggle');
   if (toggle) {
     chrome.storage.local.get(['cryptick_bridge_enabled'], (data) => {
       toggle.checked = data.cryptick_bridge_enabled !== false;
     });
-
     toggle.addEventListener('change', () => {
       chrome.storage.local.set({ cryptick_bridge_enabled: toggle.checked });
-    });
-  }
-
-  const testBtn = document.getElementById('testPasskeyBtn');
-  if (testBtn) {
-    testBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: 'https://webauthn.io' });
-    });
-  }
-
-  const testLink = document.getElementById('passkeyTestLink');
-  if (testLink) {
-    testLink.addEventListener('click', () => {
-      chrome.tabs.create({ url: 'https://webauthn.io' });
     });
   }
 
@@ -383,32 +220,29 @@ function initPasskeyTab() {
       chrome.storage.local.remove(['cryptick_passkeys_history'], () => {
         allPasskeys = [];
         renderPasskeyList([]);
-        updatePasskeyCount();
       });
     });
   }
 
   initPasskeySearch();
   loadPasskeyHistory();
-  updatePasskeyCount();
 }
 
 function initPasskeySearch() {
   const searchInput = document.getElementById('passkeySearch');
   if (!searchInput) return;
-
   searchInput.addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
-    if (!q) {
-      renderPasskeyList(allPasskeys);
-    } else {
-      const filtered = allPasskeys.filter(item =>
-        (item.rpId && item.rpId.toLowerCase().includes(q)) ||
-        (item.user && item.user.toLowerCase().includes(q))
-      );
-      renderPasskeyList(filtered, q);
-    }
+    renderPasskeyList(filterPasskeys(q), q);
   });
+}
+
+function filterPasskeys(q) {
+  if (!q) return allPasskeys;
+  return allPasskeys.filter(item =>
+    (item.rpId && item.rpId.toLowerCase().includes(q)) ||
+    (item.user && item.user.toLowerCase().includes(q))
+  );
 }
 
 function loadPasskeyHistory() {
@@ -416,15 +250,7 @@ function loadPasskeyHistory() {
     allPasskeys = data.cryptick_passkeys_history || [];
     const searchInput = document.getElementById('passkeySearch');
     const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-    if (q) {
-      const filtered = allPasskeys.filter(item =>
-        (item.rpId && item.rpId.toLowerCase().includes(q)) ||
-        (item.user && item.user.toLowerCase().includes(q))
-      );
-      renderPasskeyList(filtered, q);
-    } else {
-      renderPasskeyList(allPasskeys);
-    }
+    renderPasskeyList(filterPasskeys(q), q);
   });
 }
 
@@ -434,19 +260,19 @@ function renderPasskeyList(items, query = '') {
 
   if (allPasskeys.length === 0) {
     listEl.innerHTML = `
-      <div class="m3-empty-state">
-        <svg viewBox="0 0 24 24"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
-        <span>No passkeys stored yet</span>
-        <span style="font-size: 10.5px; opacity: 0.8;">Sign in to GitHub, Google, or any WebAuthn service.</span>
+      <div class="ct-empty">
+        <svg class="ct-icon"><use href="#ic-key"/></svg>
+        <span>No sign-ins yet</span>
+        <span class="ct-empty-note">Sign in anywhere that supports passkeys and it'll show up here.</span>
       </div>`;
     return;
   }
 
   if (items.length === 0 && query) {
     listEl.innerHTML = `
-      <div class="m3-empty-state">
-        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-        <span>No passkeys match "${escapeHtml(query)}"</span>
+      <div class="ct-empty">
+        <svg class="ct-icon"><use href="#ic-search"/></svg>
+        <span>No matches for &ldquo;${escapeHtml(query)}&rdquo;</span>
       </div>`;
     return;
   }
@@ -454,100 +280,88 @@ function renderPasskeyList(items, query = '') {
   listEl.innerHTML = '';
   items.forEach(item => {
     const wrap = document.createElement('div');
-    wrap.style.display = 'flex';
-    wrap.style.flexDirection = 'column';
 
     const row = document.createElement('div');
-    row.className = 'm3-list-item';
-    row.style.cursor = 'pointer';
+    row.className = 'ct-item';
 
-    const domain = item.rpId || 'Unknown Domain';
+    const domain = item.rpId || 'Unknown site';
     const initial = domain.charAt(0).toUpperCase();
-    const user = item.user || 'Hardware Resident Key';
+    const user = item.user || 'Hardware passkey';
     const timeFormatted = formatRelativeTime(item.time);
-    const actionBadge = item.action === 'create' ? 'Registered' : 'Passkey';
+    const actionBadge = item.action === 'create' ? 'Created' : 'Signed in';
 
     const mainCol = document.createElement('div');
-    mainCol.style.display = 'flex';
-    mainCol.style.alignItems = 'center';
-    mainCol.style.flex = '1';
-    mainCol.style.minWidth = '0';
-
+    mainCol.className = 'ct-item-main';
     mainCol.innerHTML = `
-      <div class="m3-leading-avatar">${initial}</div>
-      <div class="m3-item-content">
-        <span class="m3-item-title">${escapeHtml(domain)}</span>
-        <span class="m3-item-subtitle">${escapeHtml(user)} • ${timeFormatted}</span>
+      <div class="ct-avatar">${escapeHtml(initial)}</div>
+      <div class="ct-item-content">
+        <span class="ct-item-title">${escapeHtml(domain)}</span>
+        <span class="ct-item-subtitle">${escapeHtml(user)} &bull; ${timeFormatted}</span>
       </div>
     `;
 
     const actionsCol = document.createElement('div');
-    actionsCol.style.display = 'flex';
-    actionsCol.style.alignItems = 'center';
-    actionsCol.style.gap = '6px';
-    actionsCol.style.flexShrink = '0';
-    actionsCol.style.minWidth = '95px';
-    actionsCol.style.justifyContent = 'flex-end';
+    actionsCol.className = 'ct-item-actions';
 
     const badge = document.createElement('span');
-    badge.className = 'm3-badge';
+    badge.className = 'ct-badge';
     badge.textContent = actionBadge;
 
     const delBtn = document.createElement('button');
-    delBtn.className = 'm3-btn-icon danger';
-    delBtn.title = 'Delete passkey';
-    delBtn.setAttribute('aria-label', `Delete passkey for ${domain}`);
-    delBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+    delBtn.className = 'ct-btn-icon danger';
+    delBtn.title = 'Remove from this list';
+    delBtn.setAttribute('aria-label', `Remove ${domain} from recent activity`);
+    delBtn.innerHTML = `<svg class="ct-icon" style="width:14px;height:14px;"><use href="#ic-delete"/></svg>`;
+
+    const chevron = document.createElement('svg');
+    chevron.setAttribute('class', 'ct-icon ct-item-chevron');
+    chevron.innerHTML = `<use href="#ic-chevron"/>`;
 
     actionsCol.appendChild(badge);
     actionsCol.appendChild(delBtn);
+    actionsCol.appendChild(chevron);
 
     row.appendChild(mainCol);
     row.appendChild(actionsCol);
 
-    // Expandable detail drawer
     const details = document.createElement('div');
-    details.className = 'm3-item-details';
-    const fullDate = item.time ? new Date(item.time).toLocaleString() : 'Hardware Secure Storage';
+    details.className = 'ct-item-details';
+    const fullDate = item.time ? new Date(item.time).toLocaleString() : 'Unknown time';
     details.innerHTML = `
-      <div class="m3-item-detail-row"><span>Relying Party</span><strong>${escapeHtml(domain)}</strong></div>
-      <div class="m3-item-detail-row"><span>User Account</span><strong>${escapeHtml(user)}</strong></div>
-      <div class="m3-item-detail-row"><span>Credential</span><strong>FIDO2 / CTAP2 Resident Key</strong></div>
-      <div class="m3-item-detail-row"><span>Last Active</span><strong>${escapeHtml(fullDate)}</strong></div>
-      <div style="display:flex; justify-content:flex-end; margin-top: 6px;">
-        <button class="m3-btn-text danger detail-del-btn" style="font-size: 10.5px; padding: 2px 6px;">
-          <svg viewBox="0 0 24 24" style="width:12px; height:12px; fill:currentColor;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          Delete Passkey
-        </button>
+      <div class="ct-detail-row"><span>Site</span><strong>${escapeHtml(domain)}</strong></div>
+      <div class="ct-detail-row"><span>Account</span><strong>${escapeHtml(user)}</strong></div>
+      <div class="ct-detail-row"><span>Last used</span><strong>${escapeHtml(fullDate)}</strong></div>
+      <div style="display:flex; justify-content:flex-end; margin-top: 4px;">
+        <button class="ct-btn-text danger detail-del-btn" style="font-size: var(--ct-fs-xs);">Remove</button>
       </div>
     `;
 
-    // Toggle detail on row click
     mainCol.addEventListener('click', () => {
       details.classList.toggle('open');
+      row.classList.toggle('expanded', details.classList.contains('open'));
     });
 
-    // Delete handler with inline confirmation
     function triggerDeleteConfirm(e) {
       if (e && e.stopPropagation) e.stopPropagation();
       actionsCol.innerHTML = '';
 
       const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'm3-btn-text';
-      cancelBtn.style.fontSize = '10.5px';
+      cancelBtn.className = 'ct-btn-text';
+      cancelBtn.style.fontSize = 'var(--ct-fs-xs)';
       cancelBtn.textContent = 'Cancel';
       cancelBtn.addEventListener('click', (ev) => {
         if (ev && ev.stopPropagation) ev.stopPropagation();
         actionsCol.innerHTML = '';
         actionsCol.appendChild(badge);
         actionsCol.appendChild(delBtn);
+        actionsCol.appendChild(chevron);
       });
 
       const confirmBtn = document.createElement('button');
-      confirmBtn.className = 'm3-btn-text danger';
-      confirmBtn.style.fontSize = '10.5px';
+      confirmBtn.className = 'ct-btn-text danger';
+      confirmBtn.style.fontSize = 'var(--ct-fs-xs)';
       confirmBtn.style.fontWeight = '700';
-      confirmBtn.textContent = 'Delete';
+      confirmBtn.textContent = 'Remove';
       confirmBtn.addEventListener('click', (ev) => {
         if (ev && ev.stopPropagation) ev.stopPropagation();
         executeDeletePasskey(item, wrap);
@@ -568,9 +382,9 @@ function renderPasskeyList(items, query = '') {
 }
 
 function executeDeletePasskey(item, element) {
-  element.style.transition = 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+  element.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
   element.style.opacity = '0';
-  element.style.transform = 'scale(0.96)';
+  element.style.transform = 'scale(0.97)';
 
   chrome.runtime.sendMessage({
     action: 'delete_passkey',
@@ -578,32 +392,21 @@ function executeDeletePasskey(item, element) {
   }, () => {
     chrome.storage.local.get(['cryptick_passkeys_history'], (data) => {
       let updated = data.cryptick_passkeys_history || [];
-      if (item.id) {
-        updated = updated.filter(x => x.id !== item.id);
-      } else {
-        updated = updated.filter(x => !(x.rpId === item.rpId && x.user === item.user));
-      }
+      updated = item.id
+        ? updated.filter(x => x.id !== item.id)
+        : updated.filter(x => !(x.rpId === item.rpId && x.user === item.user));
       chrome.storage.local.set({ cryptick_passkeys_history: updated }, () => {
         allPasskeys = updated;
         const searchInput = document.getElementById('passkeySearch');
         const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        if (q) {
-          const filtered = allPasskeys.filter(it =>
-            (it.rpId && it.rpId.toLowerCase().includes(q)) ||
-            (it.user && it.user.toLowerCase().includes(q))
-          );
-          renderPasskeyList(filtered, q);
-        } else {
-          renderPasskeyList(allPasskeys);
-        }
-        updatePasskeyCount();
+        renderPasskeyList(filterPasskeys(q), q);
       });
     });
   });
 }
 
 function formatRelativeTime(ts) {
-  if (!ts) return 'Resident Key';
+  if (!ts) return 'Unknown time';
   const diffSec = Math.floor((Date.now() - ts) / 1000);
   if (diffSec < 60) return 'Just now';
   const diffMin = Math.floor(diffSec / 60);
@@ -615,15 +418,19 @@ function formatRelativeTime(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-// 5. Hardware TOTP Authenticator View
+// ---------------------------------------------------------------------------
+// 4. Hardware TOTP (Authenticator tab)
+//    Codes are computed on-chip (CTAPHID_CRYPTICK_OATH / INS 0xA2); this
+//    only ever displays the 6-digit result the host hands back.
+// ---------------------------------------------------------------------------
 async function loadTotpAccounts() {
   const container = document.getElementById('totpContainer');
   if (!container) return;
 
   container.innerHTML = `
-    <div class="m3-empty-state">
-      <svg viewBox="0 0 24 24" style="animation: spin 1s linear infinite;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-      <span>Scanning token for OATH accounts...</span>
+    <div class="ct-empty">
+      <svg class="ct-icon" style="animation: ct-spin 1s linear infinite;"><use href="#ic-refresh"/></svg>
+      <span>Reading accounts from token&hellip;</span>
     </div>`;
 
   try {
@@ -632,17 +439,17 @@ async function loadTotpAccounts() {
       allTotpAccounts = res.accounts || [];
       renderTotpList(allTotpAccounts);
     } else {
-      const msg = res && res.message ? res.message : 'Plug token in or wake BLE to view';
+      const msg = res && res.message ? 'Could not read accounts from the token.' : 'Plug in or wake Bluetooth to view accounts.';
       container.innerHTML = `
-        <div class="m3-empty-state">
-          <svg viewBox="0 0 24 24"><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2-1.21 0-2.2.99-2.2 2.2 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95a2.2 2.2 0 0 0 4.4 0c0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z"/></svg>
+        <div class="ct-empty">
+          <svg class="ct-icon"><use href="#ic-warning"/></svg>
           <span>${escapeHtml(msg)}</span>
         </div>`;
     }
   } catch (e) {
     container.innerHTML = `
-      <div class="m3-empty-state">
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      <div class="ct-empty">
+        <svg class="ct-icon"><use href="#ic-error"/></svg>
         <span>Token not reachable</span>
       </div>`;
   }
@@ -654,9 +461,9 @@ function renderTotpList(accounts) {
 
   if (accounts.length === 0) {
     container.innerHTML = `
-      <div class="m3-empty-state">
-        <svg viewBox="0 0 24 24"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
-        <span>No TOTP accounts found on token</span>
+      <div class="ct-empty">
+        <svg class="ct-icon"><use href="#ic-clock"/></svg>
+        <span>No 2FA accounts found on this token</span>
       </div>`;
     return;
   }
@@ -664,25 +471,24 @@ function renderTotpList(accounts) {
   container.innerHTML = '';
   accounts.forEach(acc => {
     const item = document.createElement('div');
-    item.className = 'm3-list-item';
+    item.className = 'ct-item';
 
     const avatar = document.createElement('div');
-    avatar.className = 'm3-leading-avatar';
-    avatar.style.background = 'var(--md-sys-color-secondary-container)';
-    avatar.style.color = 'var(--md-sys-color-on-secondary-container)';
-    avatar.innerHTML = `<svg style="width:15px; height:15px; fill:currentColor;" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>`;
+    avatar.className = 'ct-avatar';
+    avatar.innerHTML = `<svg class="ct-icon" style="width:15px;height:15px;"><use href="#ic-clock"/></svg>`;
 
     const meta = document.createElement('div');
-    meta.className = 'm3-item-content';
+    meta.className = 'ct-item-content';
+    meta.style.marginLeft = '8px';
 
     const label = document.createElement('span');
-    label.className = 'm3-item-title';
+    label.className = 'ct-item-title';
     label.textContent = acc;
     label.title = acc;
 
     const sub = document.createElement('span');
-    sub.className = 'm3-item-subtitle';
-    sub.textContent = 'Hardware OATH TOTP';
+    sub.className = 'ct-item-subtitle';
+    sub.textContent = 'Hardware 2FA';
 
     meta.appendChild(label);
     meta.appendChild(sub);
@@ -694,11 +500,10 @@ function renderTotpList(accounts) {
     actionWrap.style.marginLeft = '8px';
 
     const getBtn = document.createElement('button');
-    getBtn.className = 'm3-btn-tonal';
-    getBtn.style.height = '30px';
-    getBtn.style.padding = '0 11px';
-    getBtn.style.fontSize = '10.5px';
-    getBtn.textContent = 'Get Code';
+    getBtn.className = 'ct-btn ct-btn-tonal';
+    getBtn.style.height = '28px';
+    getBtn.style.fontSize = 'var(--ct-fs-2xs)';
+    getBtn.textContent = 'Get code';
     getBtn.addEventListener('click', () => fetchTotpCode(acc, actionWrap, getBtn));
 
     actionWrap.appendChild(getBtn);
@@ -714,36 +519,35 @@ async function fetchTotpCode(name, container, origBtn) {
   origBtn.disabled = true;
 
   try {
-    const res = await chrome.runtime.sendMessage({
-      action: 'totp_code',
-      payload: { name }
-    });
+    const res = await chrome.runtime.sendMessage({ action: 'totp_code', payload: { name } });
     if (res && res.status === 'ok' && res.code) {
       container.innerHTML = '';
       const box = document.createElement('div');
-      box.className = 'm3-code-chip';
-      box.title = 'Click to copy code';
+      box.className = 'ct-code-chip';
+      box.title = 'Click to copy';
       box.setAttribute('role', 'button');
       box.setAttribute('tabindex', '0');
-      box.setAttribute('aria-label', `Copy TOTP code for ${name}`);
+      box.setAttribute('aria-label', `Copy 2FA code for ${name}`);
 
       const codeStr = String(res.code).padStart(6, '0');
       const codeFormatted = codeStr.slice(0, 3) + ' ' + codeStr.slice(3);
 
       const digits = document.createElement('span');
-      digits.className = 'm3-digits';
+      digits.className = 'ct-digits';
       digits.textContent = codeFormatted;
 
-      const copyIcon = document.createElement('span');
-      copyIcon.style.display = 'inline-flex';
-      copyIcon.style.alignItems = 'center';
-      copyIcon.innerHTML = `<svg viewBox="0 0 24 24" style="width:12px; height:12px; fill:currentColor; opacity:0.75;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
+      const copyIcon = document.createElement('svg');
+      copyIcon.setAttribute('class', 'ct-icon');
+      copyIcon.style.width = '12px';
+      copyIcon.style.height = '12px';
+      copyIcon.style.opacity = '0.75';
+      copyIcon.innerHTML = `<use href="#ic-copy"/>`;
 
       let remaining = res.remaining || 30;
       let isCopied = false;
 
       const countdown = document.createElement('span');
-      countdown.className = 'm3-timer-pill';
+      countdown.className = 'ct-timer-pill';
       countdown.textContent = `${remaining}s`;
 
       box.appendChild(digits);
@@ -762,7 +566,7 @@ async function fetchTotpCode(name, container, origBtn) {
             ta.select();
             document.execCommand('copy');
             document.body.removeChild(ta);
-          } catch (err) {}
+          } catch (err) { /* clipboard unavailable; ignore */ }
         }
 
         if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
@@ -772,17 +576,21 @@ async function fetchTotpCode(name, container, origBtn) {
         }
 
         isCopied = true;
-        countdown.textContent = '✓ Copied';
-        countdown.style.background = 'var(--md-sys-color-primary)';
-        countdown.style.color = 'var(--md-sys-color-on-primary)';
-        copyIcon.innerHTML = `<svg viewBox="0 0 24 24" style="width:12px; height:12px; fill:var(--md-sys-color-primary);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+        countdown.textContent = 'Copied';
+        countdown.style.background = 'var(--ct-primary-dim)';
+        countdown.style.color = 'var(--ct-primary)';
+        copyIcon.innerHTML = `<use href="#ic-check-circle"/>`;
+        copyIcon.style.color = 'var(--ct-primary)';
+        copyIcon.style.opacity = '1';
 
         setTimeout(() => {
           isCopied = false;
           countdown.textContent = `${remaining}s`;
           countdown.style.background = '';
           countdown.style.color = '';
-          copyIcon.innerHTML = `<svg viewBox="0 0 24 24" style="width:12px; height:12px; fill:currentColor; opacity:0.75;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`;
+          copyIcon.innerHTML = `<use href="#ic-copy"/>`;
+          copyIcon.style.opacity = '0.75';
+          copyIcon.style.color = '';
         }, 1200);
       }
 
@@ -794,9 +602,7 @@ async function fetchTotpCode(name, container, origBtn) {
         }
       });
 
-      if (activeCountdownIntervals[name]) {
-        clearInterval(activeCountdownIntervals[name]);
-      }
+      if (activeCountdownIntervals[name]) clearInterval(activeCountdownIntervals[name]);
 
       activeCountdownIntervals[name] = setInterval(() => {
         remaining--;
@@ -804,13 +610,11 @@ async function fetchTotpCode(name, container, origBtn) {
           clearInterval(activeCountdownIntervals[name]);
           delete activeCountdownIntervals[name];
           container.innerHTML = '';
-          origBtn.textContent = 'Get Code';
+          origBtn.textContent = 'Get code';
           origBtn.disabled = false;
           container.appendChild(origBtn);
-        } else {
-          if (!isCopied) {
-            countdown.textContent = `${remaining}s`;
-          }
+        } else if (!isCopied) {
+          countdown.textContent = `${remaining}s`;
         }
       }, 1000);
 
@@ -818,116 +622,75 @@ async function fetchTotpCode(name, container, origBtn) {
     } else {
       origBtn.textContent = 'Failed';
       setTimeout(() => {
-        origBtn.textContent = 'Get Code';
+        origBtn.textContent = 'Get code';
         origBtn.disabled = false;
       }, 2000);
     }
   } catch (err) {
     origBtn.textContent = 'Error';
     setTimeout(() => {
-      origBtn.textContent = 'Get Code';
+      origBtn.textContent = 'Get code';
       origBtn.disabled = false;
     }, 2000);
   }
 }
 
-// 6. Search Filter for TOTP
 function initSearch() {
   const searchInput = document.getElementById('totpSearch');
   if (!searchInput) return;
-
   searchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase().trim();
     if (!query) {
       renderTotpList(allTotpAccounts);
     } else {
-      const filtered = allTotpAccounts.filter(acc => acc.toLowerCase().includes(query));
-      renderTotpList(filtered);
+      renderTotpList(allTotpAccounts.filter(acc => acc.toLowerCase().includes(query)));
     }
   });
 }
 
-// 7. Time Synchronization
+// ---------------------------------------------------------------------------
+// 5. Hardware clock sync (RFC 6238 needs the token's RTC within the host's
+//    30s window; SET_TIME is a real on-device instruction, not a client-side
+//    trick -- see ARCHITECTURE.md #2).
+// ---------------------------------------------------------------------------
 async function syncClock(btn) {
   const origContent = btn ? btn.innerHTML : null;
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" style="width: 13px; height: 13px; animation: spin 0.8s linear infinite;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-      <span>Syncing...</span>
-    `;
+    btn.innerHTML = `<svg class="ct-icon" style="width:13px;height:13px; animation: ct-spin 0.8s linear infinite;"><use href="#ic-refresh"/></svg><span>Syncing&hellip;</span>`;
   }
+
   const bannerEl = document.getElementById('totpSyncBanner');
-  const bannerText = document.getElementById('totpSyncBannerText');
-  const bannerTime = document.getElementById('totpSyncBannerTime');
-  const telClock = document.getElementById('telClock');
-  const telClockDrift = document.getElementById('telClockDrift');
   const totpClockDot = document.getElementById('totpClockDot');
   const totpClockBadge = document.getElementById('totpClockBadge');
-  const totpClockReadout = document.getElementById('totpClockReadout');
+  const devClockDot = document.getElementById('devClockDot');
+  const devClockDesc = document.getElementById('devClockDesc');
 
   try {
     const res = await chrome.runtime.sendMessage({ action: 'sync_time' });
-    const nowUtc = (res && res.clockUtc) ? res.clockUtc : Math.floor(Date.now() / 1000);
-    const tzStr = (res && res.tzOffsetStr) ? res.tzOffsetStr : getLocalTzOffset();
-    const timeInfo = formatTimeWithOffset(nowUtc, 0);
-    currentClockOffsetSecs = 0;
-    lastKnownUtc = nowUtc;
-    lastKnownUtcTimestamp = Date.now();
-
     if (res && res.status === 'ok') {
-      const telUtcClock = document.getElementById('telUtcClock');
-      const telTzOffset = document.getElementById('telTzOffset');
-      const totpClockOffsetBadge = document.getElementById('totpClockOffsetBadge');
-
-      if (telClock) {
-        telClock.textContent = `${timeInfo.localTime} (${tzStr})`;
-      }
-      if (telUtcClock) {
-        telUtcClock.textContent = timeInfo.utcTime;
-      }
-      if (telTzOffset) {
-        telTzOffset.textContent = tzStr;
-      }
-      if (telClockDrift) {
-        telClockDrift.textContent = '0.0s (Host Sync)';
-        telClockDrift.style.color = '#10b981';
-      }
-      if (totpClockDot) totpClockDot.className = 'm3-status-dot green';
-      if (totpClockBadge) {
-        totpClockBadge.textContent = 'In Sync';
-        totpClockBadge.style.background = '';
-        totpClockBadge.style.color = '';
-      }
-      if (totpClockReadout) {
-        totpClockReadout.textContent = `${timeInfo.utcTime} • Host In-Sync`;
-      }
-      if (bannerEl && bannerText) {
-        bannerText.textContent = `✓ Hardware RTC & soft clock synced to Host (${tzStr})`;
-        if (bannerTime) bannerTime.textContent = `${timeInfo.localTime} (${tzStr}) • ${timeInfo.utcTime}`;
-        bannerEl.style.display = 'flex';
-        setTimeout(() => {
-          bannerEl.style.display = 'none';
-        }, 3500);
+      if (totpClockDot) totpClockDot.className = 'ct-dot green';
+      if (totpClockBadge) totpClockBadge.textContent = 'In sync';
+      if (devClockDot) devClockDot.className = 'ct-dot green';
+      if (devClockDesc) devClockDesc.textContent = 'In sync with this computer';
+      if (bannerEl) {
+        bannerEl.textContent = 'Hardware clock synced.';
+        bannerEl.style.display = 'block';
+        setTimeout(() => { bannerEl.style.display = 'none'; }, 2500);
       }
       loadTotpAccounts();
     } else {
-      const errMsg = (res && res.message) ? res.message : 'Sync failed';
-      if (bannerEl && bannerText) {
-        bannerText.textContent = `✕ Time sync error: ${errMsg}`;
-        bannerEl.style.display = 'flex';
-        setTimeout(() => {
-          bannerEl.style.display = 'none';
-        }, 3500);
+      if (bannerEl) {
+        bannerEl.textContent = "Couldn't sync the hardware clock. Try again once the token is connected.";
+        bannerEl.style.display = 'block';
+        setTimeout(() => { bannerEl.style.display = 'none'; }, 3500);
       }
     }
   } catch (err) {
-    if (bannerEl && bannerText) {
-      bannerText.textContent = `✕ Communication error: ${err.message}`;
-      bannerEl.style.display = 'flex';
-      setTimeout(() => {
-        bannerEl.style.display = 'none';
-      }, 3500);
+    if (bannerEl) {
+      bannerEl.textContent = "Couldn't reach the bridge service.";
+      bannerEl.style.display = 'block';
+      setTimeout(() => { bannerEl.style.display = 'none'; }, 3500);
     }
   } finally {
     if (btn) {
@@ -937,18 +700,68 @@ async function syncClock(btn) {
   }
 }
 
-// 8. Service Management
+// ---------------------------------------------------------------------------
+// 6. Test connection -- a truthful stand-in for the old "Self-Test" panel.
+//    It reports only what the status (+ ping) response actually contains;
+//    it never asserts anything about on-chip crypto engines or storage that
+//    this extension has no way to verify.
+// ---------------------------------------------------------------------------
+async function runConnectionTest() {
+  const btn = document.getElementById('testConnBtn');
+  const result = document.getElementById('testConnResult');
+  if (!btn || !result) return;
+
+  const origContent = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="ct-icon" style="width:13px;height:13px; animation: ct-spin 1s linear infinite;"><use href="#ic-refresh"/></svg>`;
+  result.style.display = 'block';
+  result.textContent = 'Checking the connection to your token…';
+
+  try {
+    const [status, ping] = await Promise.all([
+      chrome.runtime.sendMessage({ action: 'status', forceFresh: true }),
+      chrome.runtime.sendMessage({ action: 'ping' }).catch(() => null)
+    ]);
+    applyStatus(status);
+
+    let line;
+    if (status && status.status === 'ok' && (status.usb || status.inRange)) {
+      const via = status.usb ? 'USB' : 'Bluetooth';
+      const latency = status.latencyMs ? ` — responded in ${status.latencyMs} ms` : '';
+      line = `Connected over ${via}${latency}.`;
+    } else if (status && status.status === 'ok') {
+      line = 'Bridge service is running, but no token is connected.';
+    } else {
+      line = "Can't reach the bridge service. Make sure it's installed and running.";
+    }
+    if (ping && ping.status === 'ok' && ping.version) {
+      line += ` (Bridge v${ping.version})`;
+    }
+    result.textContent = line;
+  } catch (e) {
+    result.textContent = "Couldn't complete the connection test.";
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origContent;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 7. Bridge service restart
+// ---------------------------------------------------------------------------
 async function handleRestart() {
-  const devTransport = document.getElementById('devTransport');
-  const devTransportDesc = document.getElementById('devTransportDesc');
-  if (devTransport) devTransport.textContent = 'Restarting...';
-  if (devTransportDesc) devTransportDesc.textContent = 'Kickstarting daemon service';
+  const btn = document.getElementById('restartBtn');
+  const devSub = document.getElementById('devSub');
+  if (devSub) devSub.textContent = 'Restarting the bridge service…';
+  if (btn) btn.disabled = true;
 
   try {
     await chrome.runtime.sendMessage({ action: 'restart' });
-    setTimeout(() => checkStatus(true), 1200);
-  } catch (e) {
-    setTimeout(() => checkStatus(true), 1200);
+  } finally {
+    setTimeout(() => {
+      checkStatus(true);
+      if (btn) btn.disabled = false;
+    }, 1200);
   }
 }
 
@@ -960,50 +773,28 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// ---------------------------------------------------------------------------
+// 8. Boot
+// ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initPasskeyTab();
   initSearch();
 
-  // Instant 0ms status rendering from background cache
+  const manifest = chrome.runtime.getManifest ? chrome.runtime.getManifest() : null;
+  const footerVersion = document.getElementById('footerVersion');
+  if (footerVersion) footerVersion.textContent = manifest && manifest.version ? `v${manifest.version}` : '';
+
+  // Instant render from the background worker's last-known cache so the
+  // popup never shows a blank/loading flash while a fresh query is inflight.
   chrome.storage.local.get(['cryptick_cached_status'], (data) => {
-    if (data.cryptick_cached_status) {
-      applyStatus(data.cryptick_cached_status);
-    }
+    if (data.cryptick_cached_status) applyStatus(data.cryptick_cached_status);
   });
 
-  // Query live status immediately
   checkStatus(false);
-  updatePasskeyCount();
 
-  // Refresh every 1.5s while popup is active
-  const statusInterval = setInterval(() => {
-    checkStatus(false);
-    updatePasskeyCount();
-  }, 1500);
-
-  // Live 1-second clock ticker for silky real-time countdown & time display
-  const clockTicker = setInterval(() => {
-    if (!lastConnectionState) return;
-    const nowMs = Date.now();
-    const elapsedSecs = Math.floor((nowMs - lastKnownUtcTimestamp) / 1000);
-    const simulatedUtc = (lastKnownUtc || Math.floor(nowMs / 1000)) + elapsedSecs;
-    const info = formatTimeWithOffset(simulatedUtc, currentClockOffsetSecs);
-    const tzStr = getLocalTzOffset();
-
-    const telClock = document.getElementById('telClock');
-    const telUtcClock = document.getElementById('telUtcClock');
-    const totpClockReadout = document.getElementById('totpClockReadout');
-
-    if (telClock) telClock.textContent = `${info.localTime} (${tzStr})`;
-    if (telUtcClock) telUtcClock.textContent = info.utcTime;
-    if (totpClockReadout) totpClockReadout.textContent = `${info.utcTime} • Host In-Sync`;
-  }, 1000);
-
-  window.addEventListener('beforeunload', () => {
-    clearInterval(statusInterval);
-    clearInterval(clockTicker);
-  });
+  const statusInterval = setInterval(() => checkStatus(false), 1500);
+  window.addEventListener('beforeunload', () => clearInterval(statusInterval));
 
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) refreshBtn.addEventListener('click', () => checkStatus(true));
@@ -1026,30 +817,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const refreshBtnDisc = document.getElementById('refreshBtnDisc');
   if (refreshBtnDisc) refreshBtnDisc.addEventListener('click', () => checkStatus(true));
 
-  const diagBtn = document.getElementById('runDiagBtn');
-  if (diagBtn) diagBtn.addEventListener('click', () => runDiagnostics(false));
+  const testConnBtn = document.getElementById('testConnBtn');
+  if (testConnBtn) testConnBtn.addEventListener('click', runConnectionTest);
 
-  // Listen to storage changes reactively while popup is open
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local') {
-      if (changes.cryptick_passkeys_history) {
-        allPasskeys = changes.cryptick_passkeys_history.newValue || [];
-        const searchInput = document.getElementById('passkeySearch');
-        const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        if (q) {
-          const filtered = allPasskeys.filter(item =>
-            (item.rpId && item.rpId.toLowerCase().includes(q)) ||
-            (item.user && item.user.toLowerCase().includes(q))
-          );
-          renderPasskeyList(filtered, q);
-        } else {
-          renderPasskeyList(allPasskeys);
-        }
-        updatePasskeyCount();
-      }
-      if (changes.cryptick_cached_status) {
-        applyStatus(changes.cryptick_cached_status.newValue);
-      }
+    if (areaName !== 'local') return;
+    if (changes.cryptick_passkeys_history) {
+      allPasskeys = changes.cryptick_passkeys_history.newValue || [];
+      const searchInput = document.getElementById('passkeySearch');
+      const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      renderPasskeyList(filterPasskeys(q), q);
+    }
+    if (changes.cryptick_cached_status) {
+      applyStatus(changes.cryptick_cached_status.newValue);
     }
   });
 });

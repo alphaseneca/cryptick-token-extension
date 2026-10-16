@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cryptick Token Passkey Bridge",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Hardware passkeys and WebAuthn over BLE for Cryptick Token",
   "browser_specific_settings": {
     "gecko": {

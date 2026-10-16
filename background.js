@@ -1,4 +1,14 @@
 // Cryptick Token - Background Service Worker
+//
+// MV3 service workers are not persistent: Chrome (and Firefox's equivalent
+// event-page lifecycle) can tear this script down and re-run it from a cold
+// start between any two messages. None of the module-level state below is
+// guaranteed to survive that -- `cachedStatus`/`wasPreviouslyConnected` are
+// only ever safe to use as *within-session* fast paths. Anything that must
+// outlive a restart is persisted to chrome.storage.local instead (and
+// re-hydrated below on cold start) so we don't fire a spurious extra
+// `sync_time` call -- or show a stale "disconnected" flash in the popup --
+// every time the worker gets re-spawned while the token is already plugged in.
 const HOST_NAME = 'com.cryptick.webauthn';
 
 let cachedStatus = null;
@@ -64,8 +74,17 @@ async function getLiveStatus(forceFresh = false) {
   }
 }
 
-// Initial warm-up query on service worker start
-getLiveStatus(true);
+// Re-hydrate from the last known state before the very first query, so a
+// service-worker restart while the token is already connected doesn't look
+// like a fresh "newly connected" transition and fire an extra sync_time call.
+chrome.storage.local.get(['cryptick_cached_status'], (data) => {
+  const prev = data && data.cryptick_cached_status;
+  if (prev) {
+    wasPreviouslyConnected = !!(prev.usb || prev.inRange);
+  }
+  // Initial warm-up query on service worker start
+  getLiveStatus(true);
+});
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const { action, payload } = request;

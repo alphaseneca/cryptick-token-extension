@@ -1,6 +1,6 @@
 {
   "name": "cryptick-token-extension",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Hardware passkeys and WebAuthn browser bridge for Cryptick Token",
   "main": "background.js",
   "scripts": {

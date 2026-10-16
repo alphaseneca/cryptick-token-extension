@@ -5,90 +5,79 @@
   <title>Cryptick Token</title>
   <style>
     /* ==========================================================================
-       Material Design 3 (M3) Baseline Tokens & Dynamic Color Architecture
+       Cryptick Token Design System
+       Dark-first palette lifted from the product site (index.html :root) so the
+       popup, landing page, and hardware packaging all read as one brand.
+       Icons: hand-built outline glyphs in a single stroke weight, standing in
+       for Material Symbols Outlined without a network font fetch (MV3 CSP /
+       offline safe). See NOTES in the repo for the tradeoff.
        ========================================================================== */
     :root {
-      /* M3 Light Palette */
-      --md-sys-color-primary: #00639b;
-      --md-sys-color-on-primary: #ffffff;
-      --md-sys-color-primary-container: #cce5ff;
-      --md-sys-color-on-primary-container: #001d32;
-      --md-sys-color-secondary: #51606f;
-      --md-sys-color-on-secondary: #ffffff;
-      --md-sys-color-secondary-container: #d4e4f6;
-      --md-sys-color-on-secondary-container: #0d1d2a;
-      --md-sys-color-tertiary: #056a4e;
-      --md-sys-color-on-tertiary: #ffffff;
-      --md-sys-color-tertiary-container: #a3f2d2;
-      --md-sys-color-on-tertiary-container: #002116;
-      --md-sys-color-error: #ba1a1a;
-      --md-sys-color-on-error: #ffffff;
-      --md-sys-color-error-container: #ffdad6;
-      --md-sys-color-on-error-container: #410002;
-      --md-sys-color-surface: #f8fafc;
-      --md-sys-color-on-surface: #191c1e;
-      --md-sys-color-surface-variant: #dee3ea;
-      --md-sys-color-on-surface-variant: #42474e;
-      --md-sys-color-surface-container-lowest: #ffffff;
-      --md-sys-color-surface-container-low: #f2f4f8;
-      --md-sys-color-surface-container: #eceff3;
-      --md-sys-color-surface-container-high: #e6e9ee;
-      --md-sys-color-surface-container-highest: #e0e3e8;
-      --md-sys-color-outline: #72777f;
-      --md-sys-color-outline-variant: #c2c7cf;
+      /* Brand surfaces */
+      --ct-bg: #090B0E;
+      --ct-bg-raised: #12161E;
+      --ct-bg-raised-hover: #171D27;
+      --ct-surface: #1B222D;
+      --ct-surface-hover: #212A37;
+      --ct-border: rgba(255, 255, 255, 0.09);
+      --ct-border-strong: rgba(255, 255, 255, 0.18);
 
-      /* M3 Elevation Shadows */
-      --md-sys-elevation-1: 0 1px 3px 1px rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.12);
-      --md-sys-elevation-2: 0 2px 6px 2px rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+      /* Brand accents */
+      --ct-primary: #00E5FF;
+      --ct-primary-hover: #33EBFF;
+      --ct-primary-dim: rgba(0, 229, 255, 0.1);
+      --ct-primary-border: rgba(0, 229, 255, 0.3);
+      --ct-on-primary: #04141A;
 
-      /* Typography Scale */
-      --md-sys-typescale-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-      --md-sys-typescale-code: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      --md-sys-shape-corner-small: 8px;
-      --md-sys-shape-corner-medium: 12px;
-      --md-sys-shape-corner-large: 16px;
-      --md-sys-shape-corner-full: 9999px;
-      --md-sys-motion-easing: cubic-bezier(0.16, 1, 0.3, 1);
+      --ct-success: #00E676;
+      --ct-success-dim: rgba(0, 230, 118, 0.12);
+      --ct-warning: #FFB020;
+      --ct-warning-dim: rgba(255, 176, 32, 0.12);
+      --ct-danger: #FF5C72;
+      --ct-danger-dim: rgba(255, 92, 114, 0.12);
+
+      /* Text */
+      --ct-text: #F8FAFC;
+      --ct-text-muted: #94A3B8;
+      --ct-text-dim: #64748B;
+
+      /* Type (system font stack; "Inter"/"JetBrains Mono" used only if already
+         installed locally -- no network fetch, matches the landing page). */
+      --ct-font-sans: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      --ct-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      /* Type scale */
+      --ct-fs-2xs: 10px;
+      --ct-fs-xs: 11px;
+      --ct-fs-sm: 12px;
+      --ct-fs-base: 13px;
+      --ct-fs-md: 14.5px;
+      --ct-fs-lg: 17px;
+
+      /* Spacing scale (4px base unit) */
+      --ct-sp-1: 4px;
+      --ct-sp-2: 8px;
+      --ct-sp-3: 12px;
+      --ct-sp-4: 16px;
+      --ct-sp-5: 20px;
+      --ct-sp-6: 24px;
+
+      --ct-radius-sm: 8px;
+      --ct-radius-md: 12px;
+      --ct-radius-lg: 18px;
+      --ct-radius-pill: 9999px;
+
+      --ct-spring: 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @keyframes spin {
-      100% { transform: rotate(360deg); }
+    @keyframes ct-spin { 100% { transform: rotate(360deg); } }
+    @keyframes ct-fade-up {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        /* M3 Dark Palette */
-        --md-sys-color-primary: #92ccff;
-        --md-sys-color-on-primary: #003353;
-        --md-sys-color-primary-container: #004b76;
-        --md-sys-color-on-primary-container: #cce5ff;
-        --md-sys-color-secondary: #b8c8da;
-        --md-sys-color-on-secondary: #233240;
-        --md-sys-color-secondary-container: #3a4857;
-        --md-sys-color-on-secondary-container: #d4e4f6;
-        --md-sys-color-tertiary: #87d6b6;
-        --md-sys-color-on-tertiary: #003827;
-        --md-sys-color-tertiary-container: #00513a;
-        --md-sys-color-on-tertiary-container: #a3f2d2;
-        --md-sys-color-error: #ffb4ab;
-        --md-sys-color-on-error: #690005;
-        --md-sys-color-error-container: #93000a;
-        --md-sys-color-on-error-container: #ffdad6;
-        --md-sys-color-surface: #101418;
-        --md-sys-color-on-surface: #e1e2e6;
-        --md-sys-color-surface-variant: #42474e;
-        --md-sys-color-on-surface-variant: #c2c7cf;
-        --md-sys-color-surface-container-lowest: #0b0e12;
-        --md-sys-color-surface-container-low: #181c20;
-        --md-sys-color-surface-container: #1d2024;
-        --md-sys-color-surface-container-high: #272a2f;
-        --md-sys-color-surface-container-highest: #32353a;
-        --md-sys-color-outline: #8c9199;
-        --md-sys-color-outline-variant: #42474e;
-
-        --md-sys-elevation-1: 0 1px 3px 1px rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.6);
-        --md-sys-elevation-2: 0 2px 6px 2px rgba(0, 0, 0, 0.5), 0 1px 2px 0 rgba(0, 0, 0, 0.7);
-      }
+    @keyframes ct-pulse-ring {
+      0%, 100% { transform: scale(1); opacity: 0.3; }
+      50% { transform: scale(1.08); opacity: 0.8; }
     }
 
     * {
@@ -99,253 +88,153 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    *:focus {
-      outline: none;
-    }
-
     html, body {
       width: 360px;
       max-width: 360px;
       height: 580px;
       max-height: 580px;
       overflow: hidden;
-      box-sizing: border-box;
-      margin: 0;
     }
 
     body {
-      padding: 14px 16px;
-      font-family: var(--md-sys-typescale-font);
-      background: var(--md-sys-color-surface);
-      color: var(--md-sys-color-on-surface);
+      padding: var(--ct-sp-4) var(--ct-sp-4) var(--ct-sp-3);
+      font-family: var(--ct-font-sans);
+      background: var(--ct-bg);
+      color: var(--ct-text);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       display: flex;
       flex-direction: column;
       user-select: none;
       height: 100%;
-      overflow: hidden;
+      font-size: var(--ct-fs-base);
+      line-height: 1.4;
     }
 
-    /* M3 Custom Precision Scrollbars */
-    * {
-      scrollbar-width: thin;
-      scrollbar-color: var(--md-sys-color-outline-variant) transparent;
-    }
-    *::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
-    }
-    *::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    *::-webkit-scrollbar-thumb {
-      background: var(--md-sys-color-outline-variant);
-      border-radius: 9999px;
-    }
-    *::-webkit-scrollbar-thumb:hover {
-      background: var(--md-sys-color-outline);
+    * { scrollbar-width: thin; scrollbar-color: var(--ct-border-strong) transparent; }
+    *::-webkit-scrollbar { width: 5px; height: 5px; }
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb { background: var(--ct-border-strong); border-radius: var(--ct-radius-pill); }
+    *::-webkit-scrollbar-thumb:hover { background: var(--ct-text-dim); }
+
+    /* ---------- Icon system ---------- */
+    .ct-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
-    /* M3 Top App Bar */
-    .m3-top-app-bar {
+    /* ---------- Top bar ---------- */
+    .ct-topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      margin-bottom: var(--ct-sp-3);
       flex-shrink: 0;
     }
 
-    .m3-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
+    .ct-brand { display: flex; align-items: center; gap: var(--ct-sp-2); min-width: 0; }
 
-    .m3-brand-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: var(--md-sys-shape-corner-small);
-      box-shadow: var(--md-sys-elevation-1);
+    .ct-brand-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: var(--ct-radius-sm);
       flex-shrink: 0;
     }
 
-    .m3-headline-small {
-      font-size: 14px;
+    .ct-brand-name {
+      font-size: var(--ct-fs-md);
       font-weight: 600;
-      line-height: 18px;
       letter-spacing: -0.2px;
-      color: var(--md-sys-color-on-surface);
+      color: var(--ct-text);
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
-    .m3-body-small {
-      font-size: 10.5px;
-      font-weight: 400;
-      line-height: 14px;
-      color: var(--md-sys-color-on-surface-variant);
+    .ct-brand-sub {
+      font-size: var(--ct-fs-2xs);
+      font-weight: 500;
+      color: var(--ct-text-dim);
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
-    /* M3 Status Badge / Filter Chip */
-    .m3-chip {
+    /* ---------- Status chip ---------- */
+    .ct-chip {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: var(--md-sys-shape-corner-full);
-      background: var(--md-sys-color-surface-container);
-      border: 1px solid var(--md-sys-color-outline-variant);
-      color: var(--md-sys-color-on-surface);
-      font-size: 11px;
-      font-weight: 500;
+      gap: var(--ct-sp-1);
+      padding: 4px var(--ct-sp-2);
+      border-radius: var(--ct-radius-pill);
+      background: var(--ct-surface);
+      border: 1px solid var(--ct-border);
+      color: var(--ct-text);
+      font-size: var(--ct-fs-xs);
+      font-weight: 600;
       letter-spacing: -0.1px;
-      transition: all 0.2s var(--md-sys-motion-easing);
       white-space: nowrap;
       flex-shrink: 0;
     }
 
-    .m3-status-dot {
-      width: 8px;
-      height: 8px;
+    .ct-dot {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: #9ca3af;
-      transition: all 0.2s var(--md-sys-motion-easing);
+      background: var(--ct-text-dim);
       flex-shrink: 0;
     }
+    .ct-dot.green { background: var(--ct-success); box-shadow: 0 0 6px var(--ct-success); }
+    .ct-dot.yellow { background: var(--ct-warning); box-shadow: 0 0 6px var(--ct-warning); }
+    .ct-dot.red { background: var(--ct-danger); box-shadow: 0 0 6px var(--ct-danger); }
 
-    .m3-status-dot.green {
-      background: #10b981;
-      box-shadow: 0 0 6px #10b981;
-    }
-
-    .m3-status-dot.yellow {
-      background: #f59e0b;
-      box-shadow: 0 0 6px #f59e0b;
-    }
-
-    .m3-status-dot.red {
-      background: #ef4444;
-      box-shadow: 0 0 6px #ef4444;
-    }
-
-    /* Precision SwiftUI / M3 Fluid Segmented Navigation */
-    .m3-segmented-button-group {
+    /* ---------- Segmented tab bar ---------- */
+    .ct-tabbar {
       display: flex;
-      background: var(--md-sys-color-surface-container-high);
-      border-radius: var(--md-sys-shape-corner-full);
-      padding: 2.5px;
-      margin-bottom: 12px;
+      background: var(--ct-bg-raised);
+      border: 1px solid var(--ct-border);
+      border-radius: var(--ct-radius-pill);
+      padding: 3px;
+      margin-bottom: var(--ct-sp-3);
       gap: 2px;
-      border: 1px solid var(--md-sys-color-outline-variant);
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
-      position: relative;
       flex-shrink: 0;
     }
 
-    .m3-segmented-button {
+    .ct-tab {
       flex: 1;
       min-width: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
-      padding: 6.5px 4px;
+      gap: 5px;
+      padding: 7px 4px;
       border: none;
-      outline: none;
-      border-radius: var(--md-sys-shape-corner-full);
+      border-radius: var(--ct-radius-pill);
       background: transparent;
-      color: var(--md-sys-color-on-surface-variant);
-      font-family: var(--md-sys-typescale-font);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: -0.15px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      cursor: pointer;
-      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    .m3-segmented-button:focus:not(:focus-visible) {
-      outline: none !important;
-      box-shadow: none !important;
-    }
-
-    /* Precision SwiftUI-grade focus: follows exact rounded capsule contour */
-    .m3-segmented-button:focus-visible {
-      outline: none !important;
-      box-shadow: inset 0 0 0 2px var(--md-sys-color-primary) !important;
-      border-radius: var(--md-sys-shape-corner-full) !important;
-    }
-
-    .m3-segmented-button svg {
-      width: 15px;
-      height: 15px;
-      fill: currentColor;
-      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      flex-shrink: 0;
-    }
-
-    .m3-segmented-button:hover {
-      background: rgba(0, 0, 0, 0.04);
-      color: var(--md-sys-color-on-surface);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .m3-segmented-button:hover {
-        background: rgba(255, 255, 255, 0.06);
-      }
-    }
-
-    .m3-segmented-button.active {
-      background: var(--md-sys-color-surface-container-lowest);
-      color: var(--md-sys-color-primary);
+      color: var(--ct-text-muted);
+      font-family: inherit;
+      font-size: var(--ct-fs-xs);
       font-weight: 600;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0.5px 1px rgba(0, 0, 0, 0.08);
+      letter-spacing: -0.1px;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background var(--ct-spring), color var(--ct-spring);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .m3-segmented-button.active {
-        background: var(--md-sys-color-secondary-container);
-        color: var(--md-sys-color-on-secondary-container);
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-      }
+    .ct-tab:hover { color: var(--ct-text); background: rgba(255, 255, 255, 0.04); }
+    .ct-tab:focus-visible { box-shadow: inset 0 0 0 2px var(--ct-primary); }
+    .ct-tab:active { transform: scale(0.97); }
+
+    .ct-tab.active {
+      background: var(--ct-primary-dim);
+      color: var(--ct-primary);
+      box-shadow: inset 0 0 0 1px var(--ct-primary-border);
     }
 
-    .m3-segmented-button:active {
-      transform: scale(0.96);
-      transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1);
-    }
-
-    /* Live Hardware Clock / RTC Bar */
-    .m3-clock-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 9px 12px;
-      margin-bottom: 10px;
-      background: var(--md-sys-color-surface-container-low);
-      border: 1px solid var(--md-sys-color-outline-variant);
-      border-radius: var(--md-sys-shape-corner-medium);
-      transition: all 0.2s var(--md-sys-motion-easing);
-      min-width: 0;
-    }
-
-    .m3-clock-bar:hover {
-      border-color: var(--md-sys-color-outline);
-    }
-
-    /* Tab Panes */
-    .tab-content {
+    /* ---------- Tab panes ---------- */
+    .ct-pane {
       display: none;
       flex-direction: column;
       flex: 1;
@@ -354,1075 +243,607 @@
       overflow-x: hidden;
       padding-right: 1px;
     }
+    .ct-pane.active { display: flex; }
 
-    .tab-content.active {
-      display: flex;
-    }
-
-    /* Cryptick Disconnected Screen Components */
-    .cryptick-hero {
+    /* ---------- Hero / empty-device state ---------- */
+    .ct-hero {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       text-align: center;
-      padding: 28px 16px 20px;
+      padding: var(--ct-sp-6) var(--ct-sp-4) var(--ct-sp-4);
       flex: 1;
-      animation: cryptickFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: ct-fade-up 0.25s var(--ct-spring);
     }
 
-    @keyframes cryptickFade {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .cryptick-icon-ring {
-      width: 68px;
-      height: 68px;
+    .ct-hero-ring {
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
-      background: var(--md-sys-color-surface-container-high);
-      border: 1.5px solid var(--md-sys-color-outline-variant);
+      background: var(--ct-bg-raised);
+      border: 1px solid var(--ct-border-strong);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 14px;
+      margin-bottom: var(--ct-sp-4);
       position: relative;
-      color: var(--md-sys-color-primary);
-      box-shadow: var(--md-sys-elevation-1);
+      color: var(--ct-primary);
     }
-
-    .cryptick-icon-ring::before {
+    .ct-hero-ring::before {
       content: "";
       position: absolute;
-      width: 82px;
-      height: 82px;
+      width: 74px;
+      height: 74px;
       border-radius: 50%;
-      border: 1.5px dashed var(--md-sys-color-outline-variant);
-      animation: cryptickPulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      border: 1.5px dashed var(--ct-border-strong);
+      animation: ct-pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
+    .ct-hero-ring .ct-icon { width: 26px; height: 26px; stroke-width: 1.6; }
 
-    @keyframes cryptickPulse {
-      0%, 100% { transform: scale(1); opacity: 0.35; }
-      50% { transform: scale(1.08); opacity: 0.85; }
-    }
-
-    .cryptick-icon-ring svg {
-      width: 32px;
-      height: 32px;
-      fill: currentColor;
-    }
-
-    .cryptick-title {
-      font-size: 14.5px;
+    .ct-hero-title {
+      font-size: var(--ct-fs-md);
       font-weight: 600;
       letter-spacing: -0.2px;
-      color: var(--md-sys-color-on-surface);
-      margin-bottom: 6px;
+      margin-bottom: var(--ct-sp-1);
     }
 
-    .cryptick-subtitle {
-      font-size: 11.5px;
-      font-weight: 400;
-      line-height: 16px;
-      color: var(--md-sys-color-on-surface-variant);
-      max-width: 275px;
-      margin-bottom: 16px;
-    }
-
-    .cryptick-step-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      width: 100%;
-      max-width: 290px;
-      background: var(--md-sys-color-surface-container-low);
-      border: 1px solid var(--md-sys-color-outline-variant);
-      border-radius: var(--md-sys-shape-corner-medium);
-      padding: 10px 12px;
-      margin-bottom: 14px;
-      text-align: left;
-    }
-
-    .cryptick-step-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      color: var(--md-sys-color-on-surface-variant);
-    }
-
-    .cryptick-step-item svg {
-      width: 14px;
-      height: 14px;
-      fill: var(--md-sys-color-primary);
-      flex-shrink: 0;
-    }
-
-    /* M3 Cards (Outlined & Elevated) */
-    .m3-card {
-      background: var(--md-sys-color-surface-container-low);
-      border: 1px solid var(--md-sys-color-outline-variant);
-      border-radius: var(--md-sys-shape-corner-large);
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      transition: all 0.2s var(--md-sys-motion-easing);
-    }
-
-    .m3-card:hover {
-      border-color: var(--md-sys-color-outline);
-    }
-
-    /* M3 Switch Component */
-    .m3-switch-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .m3-switch-label {
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: -0.15px;
-      color: var(--md-sys-color-on-surface);
-    }
-
-    .m3-switch-desc {
-      font-size: 11px;
-      color: var(--md-sys-color-on-surface-variant);
-    }
-
-    .m3-switch {
-      position: relative;
-      display: inline-block;
-      width: 44px;
-      height: 26px;
-      flex-shrink: 0;
-    }
-
-    .m3-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .m3-switch-track {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: var(--md-sys-color-surface-container-highest);
-      border: 1.5px solid var(--md-sys-color-outline);
-      transition: all 0.2s var(--md-sys-motion-easing);
-      border-radius: var(--md-sys-shape-corner-full);
-    }
-
-    input:focus-visible + .m3-switch-track {
-      box-shadow: 0 0 0 2px var(--md-sys-color-primary);
-    }
-
-    .m3-switch-track:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 3px;
-      bottom: 3.5px;
-      background-color: var(--md-sys-color-outline);
-      transition: all 0.2s var(--md-sys-motion-easing);
-      border-radius: 50%;
-    }
-
-    input:checked + .m3-switch-track {
-      background-color: var(--md-sys-color-primary);
-      border-color: var(--md-sys-color-primary);
-    }
-
-    input:checked + .m3-switch-track:before {
-      transform: translateX(18px);
-      background-color: var(--md-sys-color-on-primary);
-      height: 18px;
-      width: 18px;
-      left: 2px;
-      bottom: 2.5px;
-    }
-
-    /* Section Subheaders */
-    .m3-section-title {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--md-sys-color-primary);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    /* M3 Passkey & TOTP Lists */
-    .m3-list {
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-      max-height: 250px;
-      overflow-y: auto;
-      padding-right: 2px;
-    }
-
-    .m3-list-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 9px 12px;
-      background: var(--md-sys-color-surface-container-low);
-      border-radius: var(--md-sys-shape-corner-medium);
-      border: 1px solid var(--md-sys-color-outline-variant);
-      transition: all 0.15s var(--md-sys-motion-easing);
-    }
-
-    .m3-list-item:hover {
-      background: var(--md-sys-color-surface-container);
-      border-color: var(--md-sys-color-outline);
-    }
-
-    .m3-leading-avatar {
-      width: 30px;
-      height: 30px;
-      border-radius: var(--md-sys-shape-corner-full);
-      background: var(--md-sys-color-primary-container);
-      color: var(--md-sys-color-on-primary-container);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12.5px;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-
-    .m3-item-content {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      margin-left: 10px;
-      flex: 1;
-    }
-
-    .m3-item-title {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: -0.15px;
-      color: var(--md-sys-color-on-surface);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .m3-item-subtitle {
-      font-size: 10.5px;
-      color: var(--md-sys-color-on-surface-variant);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .m3-badge {
-      font-size: 9.5px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: var(--md-sys-shape-corner-full);
-      background: var(--md-sys-color-secondary-container);
-      color: var(--md-sys-color-on-secondary-container);
-      letter-spacing: -0.1px;
-    }
-
-    .m3-btn-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 26px;
-      height: 26px;
-      border-radius: var(--md-sys-shape-corner-full);
-      background: transparent;
-      border: none;
-      color: var(--md-sys-color-on-surface-variant);
-      cursor: pointer;
-      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-      flex-shrink: 0;
-      user-select: none;
-    }
-
-    .m3-btn-icon:hover {
-      background: var(--md-sys-color-surface-container-highest);
-      color: var(--md-sys-color-on-surface);
-    }
-
-    .m3-btn-icon.danger:hover {
-      background: var(--md-sys-color-error-container);
-      color: var(--md-sys-color-on-error-container);
-    }
-
-    .m3-btn-icon:focus-visible {
-      outline: none;
-      box-shadow: inset 0 0 0 2px var(--md-sys-color-primary);
-    }
-
-    .m3-btn-icon:active {
-      transform: scale(0.92);
-    }
-
-    /* Passkey Detail Drawer */
-    .m3-item-details {
-      max-height: 0;
-      opacity: 0;
-      overflow: hidden;
-      transition: max-height 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, padding 0.2s ease;
-      background: var(--md-sys-color-surface-container);
-      border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium);
-      padding: 0 12px;
-      border-left: 1px solid var(--md-sys-color-outline-variant);
-      border-right: 1px solid var(--md-sys-color-outline-variant);
-      border-bottom: 1px solid var(--md-sys-color-outline-variant);
-      margin-top: -3px;
-    }
-
-    .m3-item-details.open {
-      max-height: 280px;
-      opacity: 1;
-      padding: 8px 12px 10px;
-      margin-bottom: 4px;
-      overflow-y: auto;
-    }
-
-    .m3-item-detail-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 10.5px;
-      padding: 2.5px 0;
-      color: var(--md-sys-color-on-surface-variant);
-      min-width: 0;
-    }
-
-    .m3-item-detail-row strong {
-      color: var(--md-sys-color-on-surface);
-      font-weight: 600;
-      word-break: break-all;
-      max-width: 190px;
-      text-align: right;
-    }
-
-    /* M3 Search Bar */
-    .m3-search-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--md-sys-color-surface-container-high);
-      border-radius: var(--md-sys-shape-corner-full);
-      padding: 0 14px;
-      height: 40px;
-      margin-bottom: 10px;
-      border: 1px solid transparent;
-      transition: all 0.2s var(--md-sys-motion-easing);
-    }
-
-    .m3-search-bar:focus-within {
-      border-color: var(--md-sys-color-primary);
-      box-shadow: 0 0 0 2px var(--md-sys-color-primary-container);
-      background: var(--md-sys-color-surface-container-lowest);
-    }
-
-    .m3-search-bar svg {
-      width: 16px;
-      height: 16px;
-      fill: var(--md-sys-color-on-surface-variant);
-      flex-shrink: 0;
-    }
-
-    .m3-search-input {
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: var(--md-sys-color-on-surface);
-      font-family: var(--md-sys-typescale-font);
-      font-size: 12px;
-      letter-spacing: -0.1px;
-      outline: none;
-    }
-
-    .m3-search-input::placeholder {
-      color: var(--md-sys-color-outline);
-    }
-
-    /* M3 Buttons */
-    .m3-btn-filled {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      height: 36px;
-      padding: 0 16px;
-      border-radius: var(--md-sys-shape-corner-full);
-      background: var(--md-sys-color-primary);
-      color: var(--md-sys-color-on-primary);
-      font-family: var(--md-sys-typescale-font);
-      font-size: 11.5px;
-      font-weight: 600;
-      letter-spacing: -0.1px;
-      border: none;
-      cursor: pointer;
-      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: var(--md-sys-elevation-1);
-    }
-
-    .m3-btn-filled:hover {
-      box-shadow: var(--md-sys-elevation-2);
-      opacity: 0.95;
-    }
-
-    .m3-btn-filled:focus-visible {
-      outline: none;
-      box-shadow: inset 0 0 0 2px var(--md-sys-color-primary);
-    }
-
-    .m3-btn-filled:active {
-      transform: scale(0.96);
-    }
-
-    .m3-btn-filled svg {
-      width: 15px;
-      height: 15px;
-      fill: currentColor;
-    }
-
-    .m3-btn-tonal {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      height: 34px;
-      padding: 0 12px;
-      border-radius: var(--md-sys-shape-corner-full);
-      background: var(--md-sys-color-secondary-container);
-      color: var(--md-sys-color-on-secondary-container);
-      font-family: var(--md-sys-typescale-font);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: -0.1px;
-      white-space: nowrap;
-      border: none;
-      cursor: pointer;
-      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .m3-btn-tonal:hover {
-      background: rgba(0, 0, 0, 0.08);
-    }
-
-    .m3-btn-tonal:focus-visible {
-      outline: none;
-      box-shadow: inset 0 0 0 2px var(--md-sys-color-primary);
-    }
-
-    .m3-btn-tonal:active {
-      transform: scale(0.96);
-    }
-
-    .m3-btn-tonal svg {
-      width: 14px;
-      height: 14px;
-      fill: currentColor;
-    }
-
-    .m3-btn-text {
-      background: none;
-      border: none;
-      color: var(--md-sys-color-primary);
-      font-family: var(--md-sys-typescale-font);
-      font-size: 11.5px;
-      font-weight: 600;
-      letter-spacing: -0.1px;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: var(--md-sys-shape-corner-full);
-      transition: all 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .m3-btn-text:focus-visible {
-      outline: none;
-      box-shadow: inset 0 0 0 2px var(--md-sys-color-primary);
-    }
-
-    .m3-btn-text:active {
-      transform: scale(0.96);
-    }
-
-    .m3-btn-text:hover {
-      background: rgba(0, 99, 155, 0.08);
-    }
-
-    .m3-btn-text.danger {
-      color: var(--md-sys-color-error);
-    }
-
-    .m3-btn-text.danger:hover {
-      background: rgba(186, 26, 26, 0.08);
-    }
-
-    /* M3 TOTP Code Display */
-    .m3-code-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      background: var(--md-sys-color-surface-container-highest);
-      padding: 4px 10px;
-      border-radius: var(--md-sys-shape-corner-full);
-      cursor: pointer;
-      border: 1px solid var(--md-sys-color-outline-variant);
-      transition: all 0.15s ease;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    .m3-code-chip:hover {
-      border-color: var(--md-sys-color-primary);
-      background: var(--md-sys-color-primary-container);
-    }
-
-    .m3-code-chip:focus-visible {
-      outline: none;
-      box-shadow: inset 0 0 0 2px var(--md-sys-color-primary);
-    }
-
-    .m3-code-chip:active {
-      transform: scale(0.96);
-    }
-
-    .m3-digits {
-      font-family: var(--md-sys-typescale-code);
-      font-size: 13.5px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      color: var(--md-sys-color-primary);
-    }
-
-    .m3-timer-pill {
-      font-size: 9.5px;
-      font-weight: 600;
-      padding: 2px 7px;
-      border-radius: var(--md-sys-shape-corner-full);
-      background: var(--md-sys-color-surface-container);
-      color: var(--md-sys-color-on-surface-variant);
-      transition: all 0.15s ease;
-    }
-
-    /* M3 Device Hero Banner */
-    .m3-device-hero {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--md-sys-color-surface-container);
-      border-radius: var(--md-sys-shape-corner-large);
-      padding: 14px;
-      margin-bottom: 12px;
-      border: 1px solid var(--md-sys-color-outline-variant);
-    }
-
-    .m3-device-avatar {
-      width: 44px;
-      height: 44px;
-      border-radius: var(--md-sys-shape-corner-medium);
-      background: var(--md-sys-color-primary-container);
-      color: var(--md-sys-color-on-primary-container);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .m3-device-avatar svg {
-      width: 24px;
-      height: 24px;
-      fill: currentColor;
-    }
-
-    .m3-device-meta {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .m3-device-title {
-      font-size: 13.5px;
-      font-weight: 600;
-      color: var(--md-sys-color-on-surface);
-      line-height: 17px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .m3-device-sub {
-      font-size: 10.5px;
-      color: var(--md-sys-color-on-surface-variant);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* M3 2x2 Capabilities Matrix */
-    .m3-spec-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .m3-spec-card {
-      background: var(--md-sys-color-surface-container-low);
-      border: 1px solid var(--md-sys-color-outline-variant);
-      border-radius: var(--md-sys-shape-corner-medium);
-      padding: 9px 11px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      min-width: 0;
-      overflow: hidden;
-    }
-
-    .m3-spec-header {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      color: var(--md-sys-color-primary);
-    }
-
-    .m3-spec-header svg {
-      width: 13px;
-      height: 13px;
-      fill: currentColor;
-    }
-
-    .m3-spec-label {
-      font-size: 9.5px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--md-sys-color-on-surface-variant);
-    }
-
-    .m3-spec-val {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--md-sys-color-on-surface);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .m3-spec-desc {
-      font-size: 9px;
-      color: var(--md-sys-color-outline);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* Diagnostics Card */
-    .m3-diag-card {
-      background: var(--md-sys-color-surface-container-low);
-      border: 1px dashed var(--md-sys-color-outline);
-      border-radius: var(--md-sys-shape-corner-medium);
-      padding: 10px 12px;
-      margin-bottom: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .m3-diag-result {
-      display: none;
-      padding: 8px 10px;
-      background: var(--md-sys-color-surface-container);
-      border-radius: var(--md-sys-shape-corner-small);
-      font-family: var(--md-sys-typescale-code);
-      font-size: 10px;
+    .ct-hero-sub {
+      font-size: var(--ct-fs-sm);
       line-height: 1.5;
-      color: var(--md-sys-color-on-surface-variant);
-      max-height: 120px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      word-break: break-word;
-      overflow-wrap: anywhere;
+      color: var(--ct-text-muted);
+      max-width: 270px;
+      margin-bottom: var(--ct-sp-4);
     }
 
-    /* Telemetry rows */
-    .m3-telemetry-row {
+    /* ---------- Cards ---------- */
+    .ct-card {
+      background: var(--ct-bg-raised);
+      border: 1px solid var(--ct-border);
+      border-radius: var(--ct-radius-lg);
+      padding: var(--ct-sp-3) var(--ct-sp-3);
+      margin-bottom: var(--ct-sp-3);
+    }
+
+    /* ---------- Switch row (Platform Passkey Delegation toggle) ---------- */
+    .ct-switch-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ct-sp-3); }
+    .ct-switch-label { font-size: var(--ct-fs-base); font-weight: 600; letter-spacing: -0.1px; margin-bottom: 2px; }
+    .ct-switch-desc { font-size: var(--ct-fs-xs); color: var(--ct-text-muted); line-height: 1.4; }
+
+    .ct-switch { position: relative; display: inline-block; width: 40px; height: 24px; flex-shrink: 0; }
+    .ct-switch input { opacity: 0; width: 0; height: 0; }
+    .ct-switch-track {
+      position: absolute; inset: 0; cursor: pointer;
+      background: var(--ct-surface);
+      border: 1.5px solid var(--ct-border-strong);
+      border-radius: var(--ct-radius-pill);
+      transition: background var(--ct-spring), border-color var(--ct-spring);
+    }
+    .ct-switch-track::before {
+      position: absolute; content: "";
+      height: 15px; width: 15px; left: 2.5px; top: 2.5px;
+      background: var(--ct-text-dim);
+      border-radius: 50%;
+      transition: transform var(--ct-spring), background var(--ct-spring);
+    }
+    input:focus-visible + .ct-switch-track { box-shadow: 0 0 0 2px var(--ct-primary-border); }
+    input:checked + .ct-switch-track { background: var(--ct-primary-dim); border-color: var(--ct-primary); }
+    input:checked + .ct-switch-track::before { transform: translateX(16px); background: var(--ct-primary); }
+
+    /* ---------- Section headers ---------- */
+    .ct-section-title {
+      font-size: var(--ct-fs-2xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--ct-text-dim);
+      margin-bottom: var(--ct-sp-2);
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      font-size: 11.5px;
-      padding: 3px 0;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .m3-telemetry-label {
-      color: var(--md-sys-color-on-surface-variant);
-      white-space: nowrap;
+      justify-content: space-between;
       flex-shrink: 0;
     }
 
-    .m3-telemetry-value {
-      font-weight: 600;
-      color: var(--md-sys-color-on-surface);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      text-align: right;
-      min-width: 0;
-    }
-
-    /* Empty state */
-    .m3-empty-state {
-      text-align: center;
-      padding: 28px 16px;
-      color: var(--md-sys-color-on-surface-variant);
+    /* ---------- Search bar ---------- */
+    .ct-search {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: 8px;
-      font-size: 11.5px;
+      gap: var(--ct-sp-2);
+      background: var(--ct-surface);
+      border: 1px solid var(--ct-border);
+      border-radius: var(--ct-radius-pill);
+      padding: 0 var(--ct-sp-3);
+      height: 34px;
+      margin-bottom: var(--ct-sp-2);
+      flex-shrink: 0;
+      transition: border-color var(--ct-spring);
     }
+    .ct-search:focus-within { border-color: var(--ct-primary-border); }
+    .ct-search .ct-icon { color: var(--ct-text-dim); }
+    .ct-search input {
+      flex: 1; border: none; background: transparent; color: var(--ct-text);
+      font-family: inherit; font-size: var(--ct-fs-sm);
+    }
+    .ct-search input::placeholder { color: var(--ct-text-dim); }
 
-    .m3-empty-state svg {
-      width: 32px;
+    /* ---------- Buttons ---------- */
+    .ct-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       height: 32px;
-      fill: var(--md-sys-color-outline);
+      padding: 0 var(--ct-sp-3);
+      border-radius: var(--ct-radius-pill);
+      font-family: inherit;
+      font-size: var(--ct-fs-xs);
+      font-weight: 600;
+      letter-spacing: -0.1px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: filter var(--ct-spring), background var(--ct-spring), transform 0.1s ease;
     }
+    .ct-btn:active { transform: scale(0.96); }
+    .ct-btn:focus-visible { box-shadow: 0 0 0 2px var(--ct-primary-border); }
+    .ct-btn:disabled { opacity: 0.55; cursor: default; }
 
-    /* Footer */
-    .m3-footer {
+    .ct-btn-primary { background: var(--ct-primary); color: var(--ct-on-primary); }
+    .ct-btn-primary:hover:not(:disabled) { background: var(--ct-primary-hover); }
+
+    .ct-btn-tonal { background: var(--ct-surface); color: var(--ct-text); border: 1px solid var(--ct-border-strong); }
+    .ct-btn-tonal:hover:not(:disabled) { background: var(--ct-surface-hover); }
+
+    .ct-btn-text { background: none; color: var(--ct-primary); height: auto; padding: 3px 6px; }
+    .ct-btn-text:hover:not(:disabled) { background: var(--ct-primary-dim); }
+    .ct-btn-text.danger { color: var(--ct-danger); }
+    .ct-btn-text.danger:hover:not(:disabled) { background: var(--ct-danger-dim); }
+
+    .ct-btn-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: var(--ct-radius-pill);
+      background: transparent; border: none; color: var(--ct-text-muted); cursor: pointer;
+      transition: background var(--ct-spring), color var(--ct-spring);
+      flex-shrink: 0;
+    }
+    .ct-btn-icon:hover { background: var(--ct-surface); color: var(--ct-text); }
+    .ct-btn-icon.danger:hover { background: var(--ct-danger-dim); color: var(--ct-danger); }
+    .ct-btn-icon:focus-visible { box-shadow: inset 0 0 0 2px var(--ct-primary); }
+
+    /* ---------- List items ---------- */
+    .ct-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .ct-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-top: auto;
-      padding-top: 10px;
-      border-top: 1px solid var(--md-sys-color-outline-variant);
-      font-size: 10.5px;
+      padding: var(--ct-sp-2) var(--ct-sp-3);
+      background: var(--ct-bg-raised);
+      border: 1px solid var(--ct-border);
+      border-radius: var(--ct-radius-md);
+      transition: border-color var(--ct-spring), background var(--ct-spring);
     }
+    .ct-item:hover { border-color: var(--ct-border-strong); background: var(--ct-bg-raised-hover); }
+
+    .ct-avatar {
+      width: 28px; height: 28px; border-radius: var(--ct-radius-pill);
+      background: var(--ct-primary-dim); color: var(--ct-primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: var(--ct-fs-sm); font-weight: 700; flex-shrink: 0;
+    }
+
+    .ct-item-main { display: flex; align-items: center; flex: 1; min-width: 0; cursor: pointer; }
+    .ct-item-content { display: flex; flex-direction: column; overflow: hidden; margin-left: var(--ct-sp-2); flex: 1; }
+    .ct-item-title {
+      font-size: var(--ct-fs-sm); font-weight: 600; letter-spacing: -0.1px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ct-item-subtitle {
+      font-size: var(--ct-fs-xs); color: var(--ct-text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .ct-item-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: var(--ct-sp-2); }
+
+    .ct-item-chevron {
+      width: 14px;
+      height: 14px;
+      color: var(--ct-text-dim);
+      transition: transform var(--ct-spring);
+      flex-shrink: 0;
+    }
+    .ct-item.expanded .ct-item-chevron { transform: rotate(180deg); }
+
+    .ct-badge {
+      font-size: var(--ct-fs-2xs); font-weight: 600; padding: 2px 7px;
+      border-radius: var(--ct-radius-pill); background: var(--ct-surface);
+      color: var(--ct-text-muted); white-space: nowrap;
+    }
+
+    /* Expandable detail drawer under a list item */
+    .ct-item-details {
+      max-height: 0; opacity: 0; overflow: hidden;
+      transition: max-height 0.2s var(--ct-spring), opacity 0.15s ease, margin 0.15s ease;
+      background: var(--ct-surface);
+      border-radius: 0 0 var(--ct-radius-md) var(--ct-radius-md);
+      padding: 0 var(--ct-sp-3);
+      margin-top: -6px;
+    }
+    .ct-item-details.open { max-height: 160px; opacity: 1; padding: var(--ct-sp-2) var(--ct-sp-3) var(--ct-sp-2); margin-top: -4px; margin-bottom: 2px; }
+    .ct-detail-row {
+      display: flex; justify-content: space-between; gap: var(--ct-sp-2);
+      font-size: var(--ct-fs-xs); padding: 2px 0; color: var(--ct-text-muted);
+    }
+    .ct-detail-row strong { color: var(--ct-text); font-weight: 600; text-align: right; word-break: break-word; }
+
+    /* ---------- TOTP code chip ---------- */
+    .ct-code-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--ct-surface); padding: 4px var(--ct-sp-2);
+      border-radius: var(--ct-radius-pill); cursor: pointer;
+      border: 1px solid var(--ct-border-strong);
+      transition: border-color var(--ct-spring), background var(--ct-spring);
+    }
+    .ct-code-chip:hover { border-color: var(--ct-primary-border); background: var(--ct-primary-dim); }
+    .ct-code-chip:focus-visible { box-shadow: inset 0 0 0 2px var(--ct-primary); }
+    .ct-digits { font-family: var(--ct-font-mono); font-size: var(--ct-fs-base); font-weight: 700; letter-spacing: 0.5px; color: var(--ct-primary); }
+    .ct-timer-pill {
+      font-size: var(--ct-fs-2xs); font-weight: 600; padding: 2px 6px;
+      border-radius: var(--ct-radius-pill); background: var(--ct-bg-raised); color: var(--ct-text-muted);
+    }
+
+    /* ---------- Clock sync bar ---------- */
+    .ct-clock-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: var(--ct-sp-2);
+      padding: var(--ct-sp-2) var(--ct-sp-3);
+      margin-bottom: var(--ct-sp-2);
+      background: var(--ct-bg-raised);
+      border: 1px solid var(--ct-border);
+      border-radius: var(--ct-radius-md);
+      flex-shrink: 0;
+    }
+
+    /* ---------- Device hero card ---------- */
+    .ct-device-hero {
+      display: flex; align-items: center; gap: var(--ct-sp-3);
+      background: var(--ct-bg-raised); border: 1px solid var(--ct-border);
+      border-radius: var(--ct-radius-lg); padding: var(--ct-sp-3);
+      margin-bottom: var(--ct-sp-3);
+    }
+    .ct-device-avatar {
+      width: 42px; height: 42px; border-radius: var(--ct-radius-md);
+      background: var(--ct-primary-dim); color: var(--ct-primary);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ct-device-avatar .ct-icon { width: 22px; height: 22px; }
+    .ct-device-meta { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+    .ct-device-title { font-size: var(--ct-fs-base); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ct-device-sub { font-size: var(--ct-fs-xs); color: var(--ct-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ---------- Connection detail rows ---------- */
+    .ct-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: var(--ct-fs-sm); padding: 5px 0; gap: var(--ct-sp-2); min-width: 0;
+    }
+    .ct-row-label { color: var(--ct-text-muted); white-space: nowrap; flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+    .ct-row-label .ct-icon { width: 14px; height: 14px; color: var(--ct-text-dim); }
+    .ct-row-value { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; min-width: 0; }
+    .ct-row + .ct-row { border-top: 1px solid var(--ct-border); }
+
+    /* ---------- Test-connection result line ---------- */
+    .ct-result-line {
+      display: none;
+      font-size: var(--ct-fs-xs);
+      line-height: 1.5;
+      padding: var(--ct-sp-2) var(--ct-sp-3);
+      background: var(--ct-surface);
+      border-radius: var(--ct-radius-sm);
+      color: var(--ct-text-muted);
+      margin-top: var(--ct-sp-2);
+    }
+
+    /* ---------- Empty state ---------- */
+    .ct-empty {
+      text-align: center; padding: var(--ct-sp-6) var(--ct-sp-4);
+      color: var(--ct-text-dim);
+      display: flex; flex-direction: column; align-items: center; gap: var(--ct-sp-2);
+      font-size: var(--ct-fs-sm);
+    }
+    .ct-empty .ct-icon { width: 28px; height: 28px; stroke-width: 1.4; color: var(--ct-text-dim); }
+    .ct-empty-note { font-size: var(--ct-fs-xs); opacity: 0.85; max-width: 240px; }
+
+    /* ---------- Footer ---------- */
+    .ct-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: auto; padding-top: var(--ct-sp-2);
+      border-top: 1px solid var(--ct-border);
+      font-size: var(--ct-fs-2xs);
+      flex-shrink: 0;
+    }
+    .ct-footer-version { color: var(--ct-text-dim); font-family: var(--ct-font-mono); }
   </style>
 </head>
 <body>
 
-  <!-- M3 Top App Bar -->
-  <div class="m3-top-app-bar">
-    <div class="m3-brand">
-      <img src="icon-48.png" alt="Cryptick" class="m3-brand-icon">
+  <!-- Shared icon sprite: one outline glyph per symbol, reused everywhere via <use>. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="ic-key" viewBox="0 0 24 24">
+        <circle cx="8" cy="15" r="4.2"/>
+        <path d="M11 12.2 19.5 3.7M15.2 7.5l2.6 2.6M18 4.7l2.3 2.3"/>
+      </symbol>
+      <symbol id="ic-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 7.5v5l3.5 2"/>
+      </symbol>
+      <symbol id="ic-device" viewBox="0 0 24 24">
+        <rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/>
+        <path d="M10.3 18.2h3.4"/>
+      </symbol>
+      <symbol id="ic-usb" viewBox="0 0 24 24">
+        <circle cx="5.5" cy="12" r="2.2"/>
+        <circle cx="18.5" cy="12" r="2.2"/>
+        <path d="M7.7 12h8.6"/>
+      </symbol>
+      <symbol id="ic-bluetooth" viewBox="0 0 24 24">
+        <path d="M7 7.2 17 17 11.5 22.5V1.5L17 7 7 16.8"/>
+      </symbol>
+      <symbol id="ic-refresh" viewBox="0 0 24 24">
+        <path d="M3.5 12a8.5 8.5 0 0 1 14.2-6.3L20.5 8.5M20.5 4.5v4h-4"/>
+        <path d="M20.5 12a8.5 8.5 0 0 1-14.2 6.3L3.5 15.5M3.5 19.5v-4h4"/>
+      </symbol>
+      <symbol id="ic-search" viewBox="0 0 24 24">
+        <circle cx="10.8" cy="10.8" r="6.8"/>
+        <path d="M20.2 20.2 15.5 15.5"/>
+      </symbol>
+      <symbol id="ic-check-circle" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M8 12.3 10.6 15 16 9"/>
+      </symbol>
+      <symbol id="ic-warning" viewBox="0 0 24 24">
+        <path d="M12 3.2 2.5 20h19L12 3.2z"/>
+        <path d="M12 9.8v4M12 16.8h.01"/>
+      </symbol>
+      <symbol id="ic-error" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 7.8v5M12 16.2h.01"/>
+      </symbol>
+      <symbol id="ic-delete" viewBox="0 0 24 24">
+        <path d="M4.5 7h15M9.5 7V5.2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7M6.5 7l.9 12.2a2 2 0 0 0 2 1.8h5.2a2 2 0 0 0 2-1.8L17.5 7"/>
+      </symbol>
+      <symbol id="ic-copy" viewBox="0 0 24 24">
+        <rect x="3.5" y="8.5" width="12" height="12" rx="2"/>
+        <path d="M8.5 8.5V5.7a2.2 2.2 0 0 1 2.2-2.2h8.1a2.2 2.2 0 0 1 2.2 2.2v8.1a2.2 2.2 0 0 1-2.2 2.2h-2.8"/>
+      </symbol>
+      <symbol id="ic-chevron" viewBox="0 0 24 24">
+        <path d="M6 9.5 12 15l6-5.5"/>
+      </symbol>
+      <symbol id="ic-power" viewBox="0 0 24 24">
+        <path d="M12 2.5v8"/>
+        <path d="M6.7 7a8 8 0 1 0 10.6 0"/>
+      </symbol>
+      <symbol id="ic-link" viewBox="0 0 24 24">
+        <path d="M10 14 8.8 15.2a4 4 0 0 1-5.6-5.6l2.4-2.4a4 4 0 0 1 5.6 0M14 10l1.2-1.2a4 4 0 0 1 5.6 5.6l-2.4 2.4a4 4 0 0 1-5.6 0"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- Top bar: brand + live connection chip -->
+  <div class="ct-topbar">
+    <div class="ct-brand">
+      <img src="icon-48.png" alt="" class="ct-brand-icon">
       <div>
-        <div class="m3-headline-small">Cryptick Token</div>
-        <div class="m3-body-small">Device Bridge</div>
+        <div class="ct-brand-name">Cryptick Token</div>
+        <div class="ct-brand-sub">Hardware bridge</div>
       </div>
     </div>
-    <div id="connBadge" class="m3-chip">
-      <span id="connDot" class="m3-status-dot yellow"></span>
-      <span id="connText">Checking...</span>
+    <div id="connBadge" class="ct-chip">
+      <span id="connDot" class="ct-dot yellow"></span>
+      <span id="connText">Checking&hellip;</span>
     </div>
   </div>
 
-  <!-- M3 / SwiftUI Segmented Button Navigation Bar -->
-  <div class="m3-segmented-button-group">
-    <button class="m3-segmented-button active" data-tab="tab-passkeys">
-      <!-- Material Symbol: Passkey / Key -->
-      <svg viewBox="0 0 24 24"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+  <!-- Tab navigation -->
+  <div class="ct-tabbar" role="tablist">
+    <button class="ct-tab active" data-tab="tab-passkeys" role="tab" aria-selected="true">
+      <svg class="ct-icon"><use href="#ic-key"/></svg>
       Passkeys
     </button>
-    <button class="m3-segmented-button" data-tab="tab-totp">
-      <!-- Material Symbol: Timer / Authenticator -->
-      <svg viewBox="0 0 24 24"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+    <button class="ct-tab" data-tab="tab-totp" role="tab" aria-selected="false">
+      <svg class="ct-icon"><use href="#ic-clock"/></svg>
       Authenticator
     </button>
-    <button class="m3-segmented-button" data-tab="tab-device">
-      <!-- Material Symbol: Device / Token -->
-      <svg viewBox="0 0 24 24"><path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14zm-5-3c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-3-9h6v2H9V7z"/></svg>
+    <button class="ct-tab" data-tab="tab-device" role="tab" aria-selected="false">
+      <svg class="ct-icon"><use href="#ic-device"/></svg>
       Device
     </button>
   </div>
 
   <!-- ==================== Tab 1: Passkeys ==================== -->
-  <div id="tab-passkeys" class="tab-content active">
+  <div id="tab-passkeys" class="ct-pane active" role="tabpanel">
 
-    <!-- Disconnected State (Cryptick Hero View) -->
-    <div id="passkeyDisconnected" class="cryptick-hero">
-      <div class="cryptick-icon-ring">
-        <svg viewBox="0 0 24 24"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+    <div id="passkeyDisconnected" class="ct-hero">
+      <div class="ct-hero-ring"><svg class="ct-icon"><use href="#ic-key"/></svg></div>
+      <div class="ct-hero-title">Insert your Cryptick Token</div>
+      <div class="ct-hero-sub">Plug in over USB-C, or bring it into Bluetooth range, to sign in with a hardware passkey.</div>
+      <div class="ct-chip">
+        <span class="ct-dot yellow"></span>
+        <span>Waiting for your key</span>
       </div>
-      <div class="cryptick-title">Insert Cryptick Token</div>
-      <div class="cryptick-subtitle">Plug your hardware security key into USB or wake Bluetooth to access stored passkeys and sign in securely.</div>
-      <div class="m3-chip" style="margin-bottom: 16px;">
-        <span class="m3-status-dot yellow"></span>
-        <span>Waiting for Hardware Key...</span>
-      </div>
-      <button id="passkeyTestLink" class="m3-btn-text">
-        <svg style="width:14px; height:14px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-        webauthn.io test suite
-      </button>
     </div>
 
-    <!-- Connected State -->
-    <div id="passkeyConnected" style="display: none;">
-      <div class="m3-card">
-        <div class="m3-switch-row">
+    <div id="passkeyConnected" style="display: none; flex-direction: column; min-height: 0; flex: 1;">
+      <div class="ct-card">
+        <div class="ct-switch-row">
           <div>
-            <div class="m3-switch-label">Passkey Bridge</div>
-            <div class="m3-switch-desc">Route WebAuthn requests to Cryptick</div>
+            <div class="ct-switch-label">Use Cryptick for passkeys</div>
+            <div class="ct-switch-desc">When off, your browser's built-in passkey manager handles sign-in instead.</div>
           </div>
-          <label class="m3-switch">
+          <label class="ct-switch">
             <input type="checkbox" id="bridgeToggle" checked>
-            <span class="m3-switch-track"></span>
+            <span class="ct-switch-track"></span>
           </label>
         </div>
       </div>
 
-      <div class="m3-section-title">
-        <span>Hardware Passkey Vault</span>
-        <button id="testPasskeyBtn" class="m3-btn-text">
-          <svg style="width:14px; height:14px; fill:currentColor;" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-          webauthn.io
-        </button>
-      </div>
-
-      <!-- Search Passkeys -->
-      <div class="m3-search-bar" style="margin-bottom: 8px;">
-        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-        <input type="text" id="passkeySearch" class="m3-search-input" placeholder="Search passkeys...">
-      </div>
-
-      <div id="passkeyList" class="m3-list">
-        <div class="m3-empty-state">
-          <svg viewBox="0 0 24 24"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
-          <span>No passkeys stored yet</span>
-          <span style="font-size: 10.5px; opacity: 0.8;">Sign in to GitHub, Google, or any WebAuthn service.</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== Tab 2: Authenticator (TOTP) ==================== -->
-  <div id="tab-totp" class="tab-content">
-
-    <!-- Disconnected State (Cryptick Hero View) -->
-    <div id="totpDisconnected" class="cryptick-hero">
-      <div class="cryptick-icon-ring">
-        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
-      </div>
-      <div class="cryptick-title">No Security Key Connected</div>
-      <div class="cryptick-subtitle">Insert your Cryptick Token or bring it into Bluetooth range to view 2FA accounts and generate codes.</div>
-      <button id="totpReconnectBtn" class="m3-btn-filled" style="height: 36px; padding: 0 16px;">
-        <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-        Check Connection
-      </button>
-    </div>
-
-    <!-- Connected State -->
-    <div id="totpConnected" style="display: none;">
-      <!-- Live Hardware Clock Synchronization Status Card -->
-      <div class="m3-clock-bar">
-        <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
-          <div id="totpClockDot" class="m3-status-dot green" style="flex-shrink: 0;"></div>
-          <div style="display: flex; flex-direction: column; overflow: hidden; min-width: 0;">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <span style="font-size: 11.5px; font-weight: 600; color: var(--md-sys-color-on-surface); white-space: nowrap;">Hardware RTC</span>
-              <span id="totpClockBadge" class="m3-badge" style="padding: 1px 6px; font-size: 9px; flex-shrink: 0;">In Sync</span>
-            </div>
-            <span id="totpClockReadout" style="font-size: 10px; color: var(--md-sys-color-on-surface-variant); font-family: var(--md-sys-typescale-code); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">UTC --:--:-- • Host In-Sync</span>
-          </div>
-        </div>
-        <button id="totpSyncBtn" class="m3-btn-tonal" style="height: 28px; padding: 0 10px; font-size: 10.5px; flex-shrink: 0;" title="Sync hardware RTC & soft clock to host UTC">
-          <svg viewBox="0 0 24 24" style="width: 13px; height: 13px;"><path d="M21 10.12h-6.78l2.74-2.82c-2.73-2.7-7.15-2.8-9.99-.1-2.85 2.7-2.95 7.15-.21 9.99 2.73 2.84 7.18 2.85 10.02.11l1.44 1.44c-3.63 3.53-9.42 3.53-13.04-.01-3.62-3.54-3.62-9.28 0-12.81 3.62-3.54 9.42-3.54 13.04 0L21 3v7.12zM12.5 8v4.25l3.5 2.08-.72 1.21L11 13V8h1.5z"/></svg>
-          <span id="totpSyncBtnText">Sync Clock</span>
-        </button>
-      </div>
-
-      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-        <div class="m3-search-bar" style="margin-bottom: 0; flex: 1;">
-          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-          <input type="text" id="totpSearch" class="m3-search-input" placeholder="Search 2FA accounts...">
-        </div>
-        <button id="totpScanBtn" class="m3-btn-filled" style="height: 40px; padding: 0 14px; flex-shrink: 0;">
-          <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-          Scan
-        </button>
-      </div>
-
-      <!-- Clock Sync Feedback Banner -->
-      <div id="totpSyncBanner" style="display: none; flex-direction: column; gap: 2px; background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-radius: var(--md-sys-shape-corner-medium); padding: 7px 10px; margin-bottom: 8px; font-size: 10.5px; font-weight: 500; overflow: hidden;">
-        <span id="totpSyncBannerText" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">✓ Hardware clock synchronized</span>
-        <span id="totpSyncBannerTime" style="font-family: var(--md-sys-typescale-code); font-size: 9.5px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
-      </div>
-
-      <div id="totpContainer" class="m3-list">
-        <div class="m3-empty-state">
-          <svg viewBox="0 0 24 24"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
-          <span>Loading hardware TOTP accounts...</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== Tab 3: Device & System ==================== -->
-  <div id="tab-device" class="tab-content">
-    
-    <!-- Disconnected State -->
-    <div id="deviceDisconnected" class="cryptick-hero" style="padding: 24px 12px; text-align: center;">
-      <div class="cryptick-icon-ring" style="width: 56px; height: 56px; margin: 0 auto 14px; background: rgba(0, 229, 255, 0.08); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-        <svg viewBox="0 0 24 24" style="width: 26px; height: 26px; fill: var(--md-sys-color-primary);"><path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14zm-5-3c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-3-9h6v2H9V7z"/></svg>
-      </div>
-      <div class="cryptick-title" style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">Token Not Detected</div>
-      <div class="cryptick-subtitle" style="font-size: 12.5px; color: var(--md-sys-color-on-surface-variant); line-height: 1.45; max-width: 280px; margin: 0 auto 18px;">Connect your Cryptick Token via USB-C or touch the fingerprint sensor to wake over Bluetooth.</div>
-
-      <div style="display: flex; gap: 8px; justify-content: center; width: 100%; max-width: 260px; margin: 0 auto;">
-        <button id="refreshBtnDisc" class="m3-btn-tonal" style="flex: 1; height: 34px; font-size: 11.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor;"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-          Check Connection
-        </button>
-      </div>
-    </div>
-
-    <!-- Connected State -->
-    <div id="deviceConnected" style="display: none;">
-      <!-- M3 Hero Device Card -->
-      <div class="m3-device-hero">
-        <div id="devAvatar" class="m3-device-avatar">
-          <svg viewBox="0 0 24 24"><path d="M15 9H9v6h6V9zm-2 4h-2v-2h2v2zm8-2V9h-2V7c0-1.1-.9-2-2-2h-2V3h-2v2h-2V3H9v2H7c-1.1 0-2 .9-2 2v2H3v2h2v2H3v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2zm-4 6H7V7h10v10z"/></svg>
-        </div>
-        <div class="m3-device-meta">
-          <div class="m3-device-title">Cryptick Token S3</div>
-          <div id="devSub" class="m3-device-sub">ESP32-S3 Dual-Core • Secure Enclave</div>
-          <div id="devPill" class="m3-chip" style="padding: 2px 8px; margin-top: 2px; width: fit-content;">
-            <span id="devPillDot" class="m3-status-dot green"></span>
-            <span id="devPillText">Active</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- M3 2x2 Capabilities Matrix -->
-      <div class="m3-spec-grid">
-        <div class="m3-spec-card" id="devTransportCard">
-          <div class="m3-spec-header">
-            <svg viewBox="0 0 24 24"><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2-1.21 0-2.2.99-2.2 2.2 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95a2.2 2.2 0 0 0 4.4 0c0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z"/></svg>
-            <span class="m3-spec-label">Transport</span>
-          </div>
-          <span id="devTransport" class="m3-spec-val">Checking...</span>
-          <span id="devTransportDesc" class="m3-spec-desc">Querying interface</span>
-        </div>
-
-        <div class="m3-spec-card">
-          <div class="m3-spec-header">
-            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
-            <span class="m3-spec-label">Enclave</span>
-          </div>
-          <span id="devEnclave" class="m3-spec-val">Hardware AES-GCM</span>
-          <span id="devEnclaveDesc" class="m3-spec-desc">Encrypted LittleFS</span>
-        </div>
-
-        <div class="m3-spec-card">
-          <div class="m3-spec-header">
-            <svg viewBox="0 0 24 24"><path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.57 1.41-.24.13-.54.04-.68-.2-.13-.24-.04-.55.2-.68C7.82 2.52 9.86 2 12.01 2c2.13 0 3.99.47 6.03 1.52.25.13.34.43.21.67-.09.18-.26.28-.44.28zM3.5 9.72c-.1 0-.2-.03-.29-.09-.23-.16-.28-.47-.12-.7.99-1.4 2.25-2.5 3.75-3.27C9.9 4.04 12 4 12.01 4c2.01 0 4.12.05 6.16 1.67 1.5 1.25 2.76 2.36 3.75 3.75.16.23.11.54-.12.7-.23.16-.54.11-.7-.12-.92-1.3-2.09-2.34-3.48-3.5C15.7 4.96 13.78 5 12.01 5c-1.77 0-3.7.04-5.59 1.66-1.39 1.16-2.56 2.2-3.48 3.5-.09.13-.22.2-.36.2zM12 21.5c-.28 0-.5-.22-.5-.5v-4c0-.28.22-.5.5-.5s.5.22.5.5v4c0 .28-.22.5-.5.5zm-4.71-3.32c-.13 0-.26-.05-.35-.15-.78-.78-1.2-1.81-1.2-2.91 0-1.63.92-3.04 2.37-3.72.25-.12.55-.01.67.24.12.25.01.55-.24.67-1.12.53-1.8 1.59-1.8 2.81 0 .84.32 1.63.92 2.23.2.2.2.51 0 .71-.1.1-.23.15-.37.15z"/></svg>
-            <span class="m3-spec-label">Verification</span>
-          </div>
-          <span id="devVerify" class="m3-spec-val">Touch & Biometric</span>
-          <span id="devVerifyDesc" class="m3-spec-desc">Sensor Ready</span>
-        </div>
-
-        <div class="m3-spec-card">
-          <div class="m3-spec-header">
-            <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-            <span class="m3-spec-label">PIV SmartCard</span>
-          </div>
-          <span id="devPiv" class="m3-spec-val">Slot 9A Ready</span>
-          <span id="devPivDesc" class="m3-spec-desc">macOS Login</span>
-        </div>
-      </div>
-
-      <!-- Live System Telemetry Card -->
-      <div class="m3-card" style="padding: 10px 14px; margin-bottom: 12px;">
-        <div class="m3-section-title" style="margin-bottom: 6px;">Live Link Telemetry</div>
-        <div class="m3-telemetry-row">
-          <span class="m3-telemetry-label">Daemon Service</span>
-          <span id="telDaemon" class="m3-telemetry-value">Active</span>
-        </div>
-        <div class="m3-telemetry-row">
-          <span class="m3-telemetry-label">Active Transport</span>
-          <span id="telInterface" class="m3-telemetry-value">Checking...</span>
-        </div>
-        <div class="m3-telemetry-row">
-          <span class="m3-telemetry-label">Link Latency</span>
-          <span id="telLatency" class="m3-telemetry-value" style="font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-primary);">-- ms</span>
-        </div>
-        <div class="m3-telemetry-row">
-          <span class="m3-telemetry-label">Saved Passkeys</span>
-          <span id="telPasskeys" class="m3-telemetry-value">0 Stored</span>
-        </div>
-        <div class="m3-telemetry-row">
-          <span class="m3-telemetry-label">Local Clock (Offset)</span>
-          <span id="telClock" class="m3-telemetry-value" style="font-family: var(--md-sys-typescale-code);">--:--:--</span>
-        </div>
-        <div class="m3-telemetry-row">
-          <span class="m3-telemetry-label">Hardware UTC Time</span>
-          <span id="telUtcClock" class="m3-telemetry-value" style="font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-on-surface-variant);">--:--:-- UTC</span>
-        </div>
-        <div class="m3-telemetry-row">
-          <span class="m3-telemetry-label">Timezone Offset</span>
-          <span id="telTzOffset" class="m3-telemetry-value" style="font-family: var(--md-sys-typescale-code); color: var(--md-sys-color-primary);">UTC+00:00</span>
-        </div>
-        <div class="m3-telemetry-row">
-          <span class="m3-telemetry-label">Clock Drift / Offset</span>
-          <span id="telClockDrift" class="m3-telemetry-value" style="color: #10b981;">0.0s (Host Sync)</span>
-        </div>
-      </div>
-
-      <!-- M3 Hardware Diagnostics -->
-      <div class="m3-diag-card">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: 12px; font-weight: 600; color: var(--md-sys-color-on-surface);">Hardware Diagnostics</span>
-          <button id="runDiagBtn" class="m3-btn-tonal" style="height: 32px; padding: 0 12px;">
-            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            Self-Test
-          </button>
-        </div>
-        <div id="diagResult" class="m3-diag-result"></div>
-      </div>
-
-      <!-- Maintenance Actions -->
-      <div style="display: flex; gap: 8px;">
-        <button id="syncTimeBtn" class="m3-btn-tonal" style="flex: 1;" title="Sync hardware RTC and clock with host UTC">
-          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M21 10.12h-6.78l2.74-2.82c-2.73-2.7-7.15-2.8-9.99-.1-2.85 2.7-2.95 7.15-.21 9.99 2.73 2.84 7.18 2.85 10.02.11l1.44 1.44c-3.63 3.53-9.42 3.53-13.04-.01-3.62-3.54-3.62-9.28 0-12.81 3.62-3.54 9.42-3.54 13.04 0L21 3v7.12zM12.5 8v4.25l3.5 2.08-.72 1.21L11 13V8h1.5z"/></svg>
-          Sync Clock
-        </button>
-        <button id="restartBtn" class="m3-btn-tonal" style="flex: 1;">
-          <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-          Restart Bridge
-        </button>
-        <button id="clearHistoryBtn" class="m3-btn-text danger" style="padding: 0 10px;">
-          <svg style="width: 16px; height: 16px; fill: currentColor;" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      <div class="ct-section-title">
+        <span>Recent sign-in activity</span>
+        <button id="clearHistoryBtn" class="ct-btn-text danger" title="Clear this list" aria-label="Clear recent sign-in activity">
+          <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-delete"/></svg>
           Clear
         </button>
       </div>
+
+      <div class="ct-search">
+        <svg class="ct-icon"><use href="#ic-search"/></svg>
+        <input type="text" id="passkeySearch" placeholder="Search by site or account">
+      </div>
+
+      <div id="passkeyList" class="ct-list" style="overflow-y: auto; flex: 1; min-height: 0;">
+        <div class="ct-empty">
+          <svg class="ct-icon"><use href="#ic-key"/></svg>
+          <span>No sign-ins yet</span>
+          <span class="ct-empty-note">Sign in anywhere that supports passkeys and it'll show up here.</span>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Common Footer -->
-  <div class="m3-footer">
-    <span style="color: var(--md-sys-color-outline); font-family: var(--md-sys-typescale-code); font-size: 10px;">Cryptick Token v1.0.4</span>
-    <button id="refreshBtn" class="m3-btn-text">
-      <svg style="width:14px; height:14px; fill:currentColor;" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+  <!-- ==================== Tab 2: Authenticator (hardware TOTP) ==================== -->
+  <div id="tab-totp" class="ct-pane" role="tabpanel">
+
+    <div id="totpDisconnected" class="ct-hero">
+      <div class="ct-hero-ring"><svg class="ct-icon"><use href="#ic-clock"/></svg></div>
+      <div class="ct-hero-title">No key connected</div>
+      <div class="ct-hero-sub">Insert your Cryptick Token or bring it into Bluetooth range to view your 2FA codes.</div>
+      <button id="totpReconnectBtn" class="ct-btn ct-btn-primary">
+        <svg class="ct-icon" style="color: var(--ct-on-primary);"><use href="#ic-refresh"/></svg>
+        Check connection
+      </button>
+    </div>
+
+    <div id="totpConnected" style="display: none; flex-direction: column; min-height: 0; flex: 1;">
+      <div class="ct-clock-bar">
+        <div style="display: flex; align-items: center; gap: var(--ct-sp-2); min-width: 0; flex: 1;">
+          <span id="totpClockDot" class="ct-dot green"></span>
+          <div style="display:flex; flex-direction:column; min-width:0;">
+            <span style="font-size: var(--ct-fs-sm); font-weight: 600;">Hardware clock</span>
+            <span id="totpClockBadge" style="font-size: var(--ct-fs-2xs); color: var(--ct-text-muted);">In sync</span>
+          </div>
+        </div>
+        <button id="totpSyncBtn" class="ct-btn ct-btn-tonal" title="Sync the token's clock with this computer">
+          <svg id="totpSyncIcon" class="ct-icon" style="width:13px;height:13px;"><use href="#ic-refresh"/></svg>
+          <span id="totpSyncBtnText">Sync</span>
+        </button>
+      </div>
+
+      <div style="display: flex; gap: var(--ct-sp-2); align-items: center; margin-bottom: var(--ct-sp-2); flex-shrink: 0;">
+        <div class="ct-search" style="margin-bottom: 0; flex: 1;">
+          <svg class="ct-icon"><use href="#ic-search"/></svg>
+          <input type="text" id="totpSearch" placeholder="Search accounts">
+        </div>
+        <button id="totpScanBtn" class="ct-btn ct-btn-primary" style="height: 34px;" title="Rescan the token for OATH accounts">
+          <svg class="ct-icon" style="color: var(--ct-on-primary);"><use href="#ic-refresh"/></svg>
+        </button>
+      </div>
+
+      <div id="totpSyncBanner" class="ct-result-line" style="display: none;"></div>
+
+      <div id="totpContainer" class="ct-list" style="overflow-y: auto; flex: 1; min-height: 0;">
+        <div class="ct-empty">
+          <svg class="ct-icon" style="animation: ct-spin 1s linear infinite;"><use href="#ic-refresh"/></svg>
+          <span>Reading accounts from token&hellip;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Tab 3: Device ==================== -->
+  <div id="tab-device" class="ct-pane" role="tabpanel">
+
+    <div id="deviceDisconnected" class="ct-hero">
+      <div class="ct-hero-ring"><svg class="ct-icon"><use href="#ic-device"/></svg></div>
+      <div class="ct-hero-title">Token not detected</div>
+      <div class="ct-hero-sub">Connect over USB-C, or touch the sensor to wake it over Bluetooth.</div>
+      <button id="refreshBtnDisc" class="ct-btn ct-btn-tonal">
+        <svg class="ct-icon"><use href="#ic-refresh"/></svg>
+        Check connection
+      </button>
+    </div>
+
+    <div id="deviceConnected" style="display: none; flex-direction: column; min-height: 0; flex: 1; overflow-y: auto;">
+      <div class="ct-device-hero">
+        <div id="devAvatar" class="ct-device-avatar"><svg class="ct-icon"><use href="#ic-device"/></svg></div>
+        <div class="ct-device-meta">
+          <div class="ct-device-title">Cryptick Token</div>
+          <div id="devSub" class="ct-device-sub">&mdash;</div>
+        </div>
+        <span id="devPill" class="ct-chip">
+          <span id="devPillDot" class="ct-dot green"></span>
+          <span id="devPillText">Active</span>
+        </span>
+      </div>
+
+      <div class="ct-card">
+        <div class="ct-section-title" style="margin-bottom: 2px;">Connection</div>
+        <div class="ct-row">
+          <span class="ct-row-label"><svg id="devTransportIcon" class="ct-icon"><use href="#ic-usb"/></svg>Transport</span>
+          <span id="devTransport" class="ct-row-value">&mdash;</span>
+        </div>
+        <div id="devPairRow" class="ct-row" hidden>
+          <span class="ct-row-label"><svg class="ct-icon"><use href="#ic-bluetooth"/></svg>Pairing</span>
+          <span id="devPair" class="ct-row-value">&mdash;</span>
+        </div>
+        <div id="devLatencyRow" class="ct-row" hidden>
+          <span class="ct-row-label"><svg class="ct-icon"><use href="#ic-link"/></svg>Response time</span>
+          <span id="devLatency" class="ct-row-value">&mdash;</span>
+        </div>
+        <div class="ct-row">
+          <span class="ct-row-label"><svg class="ct-icon"><use href="#ic-power"/></svg>Bridge service</span>
+          <span id="devService" class="ct-row-value">&mdash;</span>
+        </div>
+      </div>
+
+      <div class="ct-card">
+        <div class="ct-switch-row">
+          <div style="display:flex; align-items:center; gap: var(--ct-sp-2);">
+            <span id="devClockDot" class="ct-dot green"></span>
+            <div>
+              <div class="ct-switch-label" style="font-size: var(--ct-fs-sm);">Hardware clock</div>
+              <div id="devClockDesc" class="ct-switch-desc">&mdash;</div>
+            </div>
+          </div>
+          <button id="syncTimeBtn" class="ct-btn ct-btn-tonal" title="Sync the token's clock with this computer">
+            <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-refresh"/></svg>
+            Sync
+          </button>
+        </div>
+      </div>
+
+      <div class="ct-card">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: var(--ct-fs-sm); font-weight: 600;">Test connection</span>
+          <button id="testConnBtn" class="ct-btn ct-btn-tonal">
+            <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-link"/></svg>
+            Run
+          </button>
+        </div>
+        <div id="testConnResult" class="ct-result-line"></div>
+      </div>
+
+      <div style="display: flex; gap: var(--ct-sp-2); flex-shrink: 0;">
+        <button id="restartBtn" class="ct-btn ct-btn-tonal" style="flex: 1;">
+          <svg class="ct-icon"><use href="#ic-power"/></svg>
+          Restart bridge service
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="ct-footer">
+    <span id="footerVersion" class="ct-footer-version">&mdash;</span>
+    <button id="refreshBtn" class="ct-btn-text" style="font-size: var(--ct-fs-xs);">
+      <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-refresh"/></svg>
       Refresh
     </button>
   </div>
