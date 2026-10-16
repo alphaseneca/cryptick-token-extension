@@ -106,10 +106,11 @@
     html, body {
       width: 360px;
       max-width: 360px;
-      min-height: 520px;
-      max-height: 600px;
-      overflow-x: hidden;
+      height: 580px;
+      max-height: 580px;
+      overflow: hidden;
       box-sizing: border-box;
+      margin: 0;
     }
 
     body {
@@ -122,6 +123,8 @@
       display: flex;
       flex-direction: column;
       user-select: none;
+      height: 100%;
+      overflow: hidden;
     }
 
     /* M3 Custom Precision Scrollbars */
@@ -1124,7 +1127,7 @@
       <img src="icon-48.png" alt="Cryptick" class="m3-brand-icon">
       <div>
         <div class="m3-headline-small">Cryptick Token</div>
-        <div class="m3-body-small">Hardware Security Bridge</div>
+        <div class="m3-body-small">Device Bridge</div>
       </div>
     </div>
     <div id="connBadge" class="m3-chip">
@@ -1276,45 +1279,20 @@
   <!-- ==================== Tab 3: Device & System ==================== -->
   <div id="tab-device" class="tab-content">
     
-    <!-- Disconnected State (Cryptick Hero View) -->
-    <div id="deviceDisconnected" class="cryptick-hero" style="padding: 18px 8px 12px;">
-      <div class="cryptick-icon-ring">
-        <svg viewBox="0 0 24 24"><path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14zm-5-3c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-3-9h6v2H9V7z"/></svg>
+    <!-- Disconnected State -->
+    <div id="deviceDisconnected" class="cryptick-hero" style="padding: 24px 12px; text-align: center;">
+      <div class="cryptick-icon-ring" style="width: 56px; height: 56px; margin: 0 auto 14px; background: rgba(0, 229, 255, 0.08); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 26px; height: 26px; fill: var(--md-sys-color-primary);"><path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14zm-5-3c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-3-9h6v2H9V7z"/></svg>
       </div>
-      <div class="cryptick-title">Hardware Token Disconnected</div>
-      <div class="cryptick-subtitle">Insert your Cryptick Token into any USB port or wake it over Bluetooth.</div>
+      <div class="cryptick-title" style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">Token Not Detected</div>
+      <div class="cryptick-subtitle" style="font-size: 12.5px; color: var(--md-sys-color-on-surface-variant); line-height: 1.45; max-width: 280px; margin: 0 auto 18px;">Connect your Cryptick Token via USB-C or touch the fingerprint sensor to wake over Bluetooth.</div>
 
-      <div class="cryptick-step-list">
-        <div class="cryptick-step-item">
-          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-          <span>Direct USB 2.0: Instant, zero latency</span>
-        </div>
-        <div class="cryptick-step-item">
-          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-          <span>Bluetooth LE: Touch sensor to wake</span>
-        </div>
-        <div class="cryptick-step-item">
-          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-          <span>Daemon Bridge: Automatic reconnection</span>
-        </div>
+      <div style="display: flex; gap: 8px; justify-content: center; width: 100%; max-width: 260px; margin: 0 auto;">
+        <button id="refreshBtnDisc" class="m3-btn-tonal" style="flex: 1; height: 34px; font-size: 11.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor;"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          Check Connection
+        </button>
       </div>
-
-      <!-- Diagnostic suite accessible when disconnected -->
-      <div class="m3-diag-card" style="width: 100%; max-width: 310px;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: 11.5px; font-weight: 600; color: var(--md-sys-color-on-surface);">Host Diagnostics</span>
-          <button id="runDiagBtnDisc" class="m3-btn-tonal" style="height: 28px; padding: 0 10px; font-size: 10.5px;">
-            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            Self-Test
-          </button>
-        </div>
-        <div id="diagResultDisc" class="m3-diag-result"></div>
-      </div>
-
-      <button id="restartBtnDisc" class="m3-btn-tonal" style="width: 100%; max-width: 310px; margin-top: 4px;">
-        <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-        Restart Daemon Bridge
-      </button>
     </div>
 
     <!-- Connected State -->
@@ -1440,9 +1418,9 @@
     </div>
   </div>
 
-  <!-- Common M3 Footer -->
+  <!-- Common Footer -->
   <div class="m3-footer">
-    <span style="color: var(--md-sys-color-outline); font-family: var(--md-sys-typescale-code); font-size: 10px;">Cryptick M3 v1.0.4</span>
+    <span style="color: var(--md-sys-color-outline); font-family: var(--md-sys-typescale-code); font-size: 10px;">Cryptick Token v1.0.4</span>
     <button id="refreshBtn" class="m3-btn-text">
       <svg style="width:14px; height:14px; fill:currentColor;" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
       Refresh

@@ -1023,14 +1023,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const restartBtn = document.getElementById('restartBtn');
   if (restartBtn) restartBtn.addEventListener('click', handleRestart);
 
-  const restartBtnDisc = document.getElementById('restartBtnDisc');
-  if (restartBtnDisc) restartBtnDisc.addEventListener('click', handleRestart);
+  const refreshBtnDisc = document.getElementById('refreshBtnDisc');
+  if (refreshBtnDisc) refreshBtnDisc.addEventListener('click', () => checkStatus(true));
 
   const diagBtn = document.getElementById('runDiagBtn');
   if (diagBtn) diagBtn.addEventListener('click', () => runDiagnostics(false));
-
-  const diagBtnDisc = document.getElementById('runDiagBtnDisc');
-  if (diagBtnDisc) diagBtnDisc.addEventListener('click', () => runDiagnostics(true));
 
   // Listen to storage changes reactively while popup is open
   chrome.storage.onChanged.addListener((changes, areaName) => {
