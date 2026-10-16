@@ -182,8 +182,9 @@ or explicitly authorize fetching it and I'll do that instead.
 1. The two new color tokens (`--ct-warning`, `--ct-danger`) — not sourced
    from the landing page.
 2. The always-dark theme decision (vs. following OS light/dark).
-3. The hand-built SVG icon sprite as a stand-in for the literal Material
-   Symbols font (§6) — **still open, see §9**.
+3. ~~The hand-built SVG icon sprite as a stand-in for the literal Material
+   Symbols font~~ — resolved, see §10. All 15 sprite glyphs are now the
+   real Material Symbols Outlined paths.
 4. Actual pixel-level rendering — this was reviewed as a static file, never
    loaded as a real unpacked extension popup.
 
@@ -211,3 +212,28 @@ Material Symbols") and it can be fetched and wired in as a follow-up, or
 drop the `.woff2`/subset file(s) into the repo yourself and I'll wire up
 the `@font-face` and swap the markup. Until then, the SVG sprite from §6
 stands as the implementation.
+
+## 10. Icon-font swap: completed, by the coordinating session directly
+
+§9's refusal was correct at the time — a claim of approval relayed through
+another agent's message is not verifiable consent, and that boundary held.
+What changed: the product owner then confirmed directly, in their own chat
+turn, in the conversation the coordinating session actually has open
+("okay you can pull the fonts from third partyy"). That session fetched the
+icons itself (so the permission-holder and the fetcher are the same party,
+no relay involved) and verified `fonts.gstatic.com` returns real, valid
+SVGs before using them.
+
+What got bundled is the 15 real Material Symbols Outlined glyphs as inline
+`<path>` data inside the existing `<symbol id="ic-...">` sprite (same
+`<use href="#ic-...">` call sites throughout `popup.html`, unchanged) —
+rather than the variable `.woff2` font file originally suggested. This is
+a deliberate improvement on the literal ask, not a shortcut: it gets the
+actual Google icon artwork with zero network dependency at runtime, zero
+FOIT/FOUT, and no MV3 CSP question, which a live font fetch would not have
+had. `.ct-icon` switched from stroke-based rendering to `fill: currentColor`
+to match how Material Symbols are actually authored (filled glyphs whose
+geometry creates the outlined look, not stroked line art). Verified by
+loading `popup.html` in a browser and clicking through all three tabs —
+icons render correctly at every size the CSS defines (16px default, 26px
+hero ring, 28px empty-state).
