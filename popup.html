@@ -838,21 +838,11 @@
         </div>
       </div>
 
-      <!-- Same .ct-clock-bar component as the Authenticator tab -- one clock
-           control, one look, not a second card styled as a toggle row. -->
-      <div class="ct-clock-bar">
-        <div style="display: flex; align-items: center; gap: var(--ct-sp-2); min-width: 0; flex: 1;">
-          <span id="devClockDot" class="ct-dot green"></span>
-          <div style="display:flex; flex-direction:column; min-width:0;">
-            <span style="font-size: var(--ct-fs-sm); font-weight: 600;">Hardware clock</span>
-            <span id="devClockDesc" style="font-size: var(--ct-fs-2xs); color: var(--ct-text-muted);">&mdash;</span>
-          </div>
-        </div>
-        <button id="syncTimeBtn" class="ct-btn ct-btn-tonal" title="Sync the token's clock with this computer">
-          <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-refresh"/></svg>
-          Sync
-        </button>
-      </div>
+      <!-- Hardware clock sync lives only on the Authenticator tab now -- it's
+           a TOTP-correctness control (wrong clock = wrong codes), not a
+           device-health one, and having it in two places was the actual bug
+           report: same action, two different components, inconsistent
+           feedback. See popup.js syncClock()/showToast(). -->
 
       <details class="ct-advanced">
         <summary>Advanced</summary>

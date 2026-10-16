@@ -121,8 +121,6 @@ function applyStatus(res) {
 
   const totpClockDot = document.getElementById('totpClockDot');
   const totpClockBadge = document.getElementById('totpClockBadge');
-  const devClockDot = document.getElementById('devClockDot');
-  const devClockDesc = document.getElementById('devClockDesc');
   const isClockSynced = !!(res && res.clockSynced);
 
   if (totpClockDot && totpClockBadge) {
@@ -132,15 +130,6 @@ function applyStatus(res) {
     } else {
       totpClockDot.className = 'ct-dot yellow';
       totpClockBadge.textContent = 'Token disconnected';
-    }
-  }
-  if (devClockDot && devClockDesc) {
-    if (isConnected) {
-      devClockDot.className = isClockSynced ? 'ct-dot green' : 'ct-dot yellow';
-      devClockDesc.textContent = isClockSynced ? 'In sync with this computer' : 'Needs a sync for accurate 2FA codes';
-    } else {
-      devClockDot.className = 'ct-dot yellow';
-      devClockDesc.textContent = 'Connect your token to sync';
     }
   }
 
@@ -682,16 +671,12 @@ async function syncClock(btn) {
 
   const totpClockDot = document.getElementById('totpClockDot');
   const totpClockBadge = document.getElementById('totpClockBadge');
-  const devClockDot = document.getElementById('devClockDot');
-  const devClockDesc = document.getElementById('devClockDesc');
 
   try {
     const res = await chrome.runtime.sendMessage({ action: 'sync_time' });
     if (res && res.status === 'ok') {
       if (totpClockDot) totpClockDot.className = 'ct-dot green';
       if (totpClockBadge) totpClockBadge.textContent = 'In sync';
-      if (devClockDot) devClockDot.className = 'ct-dot green';
-      if (devClockDesc) devClockDesc.textContent = 'In sync with this computer';
       showToast('Hardware clock synced.', 'success');
       loadTotpAccounts();
     } else {
@@ -814,9 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const totpReconnectBtn = document.getElementById('totpReconnectBtn');
   if (totpReconnectBtn) totpReconnectBtn.addEventListener('click', () => checkStatus(true));
-
-  const syncTimeBtn = document.getElementById('syncTimeBtn');
-  if (syncTimeBtn) syncTimeBtn.addEventListener('click', () => syncClock(syncTimeBtn));
 
   const restartBtn = document.getElementById('restartBtn');
   if (restartBtn) restartBtn.addEventListener('click', handleRestart);
