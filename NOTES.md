@@ -237,3 +237,162 @@ geometry creates the outlined look, not stroked line art). Verified by
 loading `popup.html` in a browser and clicking through all three tabs —
 icons render correctly at every size the CSS defines (16px default, 26px
 hero ring, 28px empty-state).
+
+## 11. Credential management + multi-device picker (branch `feature/credential-management-and-multidevice`)
+
+Implements items 1 and 2 of
+`docs/research/multi-device-and-credential-sync.md` on the extension side,
+against the daemon contract given at task start, corrected mid-task (see
+below). Item 3 (hardware-to-hardware cloning) is untouched, per that doc's
+own explicit recommendation against building it alongside 1 and 2.
+
+### 11.1 What changed, and why
+
+**"Recent sign-in activity" is gone.** The product owner was explicit it
+wasn't wanted: *"the passkeys thing is what i want to see on the device not
+the freaking recent thing... its just a gateway to device."* Removed
+entirely:
+- The UI (`#passkeyList`/`#passkeySearch`/`#clearHistoryBtn` and everything
+  `renderPasskeyList`/`filterPasskeys`/`loadPasskeyHistory` did in
+  `popup.js`).
+- The `chrome.storage.local` read/write of `cryptick_passkeys_history`,
+  including the write path inside `background.js`'s `create`/`get` success
+  handler and the whole `delete_passkey` message handler.
+
+In its place, the Passkeys tab's "Saved passkeys" section calls the
+daemon's `list_credentials` directly and renders the real resident
+credentials, grouped by relying party (`rpId`/`rpName` as a section header,
+each credential's `userDisplayName`/`userName` as a row). It refreshes on
+tab-open and on reconnect, the same way the Authenticator tab already
+refreshes its OATH account list — see `loadCredentials()` in `popup.js`,
+wired from `initTabs()`'s tab-click handler and from `applyStatus()`'s
+connection-transition logic.
+
+**Per-credential delete**, when `delete_credential` is available, is a
+distinct trash icon per row that requires a second, explicit "Delete from
+device?" / "Delete from device" confirm step before anything is sent —
+not a bare click — specifically because, unlike the old log's "Remove"
+(which only ever touched local storage), this one actually removes the
+credential from the hardware. See `renderCredentialRow()`'s
+`triggerDeleteConfirm()`.
+
+**Device picker** (`#devicePickerCard` on the Device tab): a single
+`<select>`, populated from `list_devices`, calling `select_device` on
+change. It stays `hidden` unless `list_devices` reports more than one
+device — per the task brief, no UI was built for a case this sandbox can't
+exercise (the test harness below only ever simulated 1-or-2 devices; real
+multi-device behavior against the daemon is unverified). Switching devices
+re-runs `checkStatus(true)` so the top-bar chip and Device-tab connection
+rows pick up the newly active device on the next poll, same as every other
+status-changing action in this file already does — no bespoke chip-update
+path was added.
+
+### 11.2 The PIN-gate correction, mid-task
+
+The original task brief specified a PIN-based gate for `list_credentials`/
+`delete_credential` (`pin_not_set`/`pin_required`/`pin_invalid` statuses,
+plus optional `set_pin`/`change_pin`), and a first pass of this work
+implemented exactly that — PIN-entry UI, a "set a PIN" flow, retry-count
+surfacing, the works.
+
+Partway through, the coordinating session corrected this directly: the
+product owner had been explicit that viewing/deleting passkeys must be
+gated by the same fingerprint/UV sensor ceremony as everyday sign-in, never
+a typed PIN — confirmed against the firmware source by the coordinating
+session. The daemon side was redirected the same way, to use CTAP2.1's
+`getPinUvAuthTokenUsingUvWithPermissions` instead of a PIN, with the
+device's own OLED prompting for the touch.
+
+**All PIN-entry UI was removed and replaced before this branch's final
+state** — there is no PIN input anywhere in `popup.html`/`popup.js`, no
+`pin` field sent on any request, and no `set_pin`/`change_pin` wiring. The
+corrected contract this branch actually implements:
+- Request: `{"action": "list_credentials"}` / `{"action":
+  "delete_credential", "payload": {"credentialId": "...", "rpId": "..."}}`
+  — no `pin` field, ever.
+- A `touch_required` status means the ceremony is pending. `popup.js`'s
+  `sendWithTouchWait()` polls the same request every 1.2s (up to ~48s, in
+  line with `injected.js`'s own 60s ceremony timeout) until a terminal
+  `ok`/`error` comes back, showing a "Touch your Cryptick Token to
+  verify…" state the whole time — copy taken verbatim from the existing
+  in-page ceremony prompt in `injected.js`, not invented fresh.
+- **Judgment call, flagging for sign-off**: the exact shape of
+  `touch_required` (single immediate ack vs. true poll-and-repeat) wasn't
+  nailed down before this branch's work concluded — the coordinating
+  message hedged it as "expect something like." `sendWithTouchWait()` is
+  written to work either way (a daemon that just blocks synchronously on
+  one call and returns the terminal status directly works fine too — the
+  poll loop simply never triggers), but this should be confirmed against
+  whatever the daemon agent's final report says, per the coordinating
+  session's own instruction to converge.
+- **Judgment call, flagging for sign-off**: `delete_credential` falling
+  back to re-showing the main "touch to verify" gate (rather than a
+  per-row prompt) if it ever comes back `pin_*`-shaped instead of
+  `touch_required`-shaped was not something I could verify either way —
+  treat the delete path's touch handling as implemented defensively, not
+  as confirmed-correct against the final daemon behavior.
+
+### 11.3 Zero-trust boundary
+
+No secret crosses this extension's code in either the old PIN design or
+the shipped touch-based one. There is nothing to cache: the only thing
+`popup.js` holds in memory is non-secret identifiers (`credentialId`,
+`rpId`, `userName`/`userDisplayName`, device `id`/`name`) — the same
+category of data `allTotpAccounts` already held before this change, never
+a key, PIN, or assertion.
+
+### 11.4 Testing actually performed
+
+No real browser extension context or hardware was available. Verified by:
+- `node --check` on all four `.js` files — pass.
+- `python3 -c "import json; json.load(...)"` on `manifest.json` and
+  `package.json` — both valid.
+- Cross-referenced every new `getElementById()` call in `popup.js` against
+  `popup.html`'s `id="..."` attributes (scripted diff, not by eye) — no
+  mismatches.
+- Served `popup.html` over a plain `python3 -m http.server` from a
+  scratchpad copy, with a hand-written `chrome.*` stub
+  (`chrome-stub.js`, scratchpad-only, never touched the repo) simulating
+  `runtime.sendMessage`/`storage.local`/`storage.onChanged` responses —
+  including `touch_required` polling (2 pending polls before `ok`),
+  grouped multi-RP credential data, a `delete_credential` flow that also
+  rides out a pending poll before succeeding, 1-and-2-device
+  `list_devices` responses, and a disconnect/reconnect cycle. Drove it
+  with the browser tool: confirmed the touch-gate copy and pulse indicator
+  render, the grouped list and real counts render, the delete
+  confirmation requires the second explicit click before anything fires,
+  a deleted credential's now-empty RP group is dropped (not left as a
+  bare header — caught and fixed during this pass, see
+  `totalCredentialCount()`), the device picker is hidden for 1 device and
+  shown with correct transport labels for 2, selecting a device fires
+  `select_device` and doesn't revert, search filters correctly and the
+  truly-empty state takes precedence over a stale "no matches" when a
+  search box has leftover text, and the Authenticator/Device tabs are
+  unaffected. No console errors at any point.
+- This is still **not** the same as loading it as an unpacked extension in
+  Chrome/Firefox and exercising real `chrome.runtime.sendNativeMessage`
+  round-trips against the actual daemon and hardware. That still needs a
+  human with the real token before shipping — in particular, the
+  `touch_required` polling behavior and the exact `delete_credential`
+  touch semantics are unverified against real daemon behavior (see 11.2).
+
+### 11.5 Needs the product owner's sign-off
+
+1. The two "judgment call" items in 11.2 (exact `touch_required` polling
+   shape; `delete_credential`'s fallback-to-main-gate behavior on an
+   unexpected status) — confirm against the daemon's actual final
+   behavior once both sides land.
+2. Delete-confirmation UX: an inline two-step confirm (danger-colored
+   "Delete from device?" badge + Cancel/"Delete from device" buttons,
+   replacing the row's actions in place) rather than a modal dialog or a
+   type-to-confirm pattern. Chosen to match this file's existing
+   confirm-in-place pattern rather than inventing a heavier one, but a
+   destructive hardware action is exactly the kind of thing worth a second
+   look.
+3. Copy wording throughout (the touch-gate message, the empty-state copy,
+   the error fallbacks, the delete button's `aria-label`/`title`) is my
+   own, written to match this file's existing voice — not reviewed by the
+   product owner.
+4. End-to-end verification against the real daemon and hardware, per
+   11.4 — unavoidable given this sandbox's constraints, flagging again so
+   it isn't missed before ship.

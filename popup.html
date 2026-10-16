@@ -364,6 +364,16 @@
     }
     .ct-search input::placeholder { color: var(--ct-text-dim); }
 
+    /* A <select> dropped into a .ct-search pill (used by the device
+       picker) -- same transparent/borderless treatment as the text input
+       above, reusing the pill instead of inventing a new control style. */
+    .ct-search select.ct-select {
+      flex: 1; border: none; background: transparent; color: var(--ct-text);
+      font-family: inherit; font-size: var(--ct-fs-sm); cursor: pointer;
+      height: 100%;
+    }
+    .ct-search select.ct-select:focus-visible { outline: none; }
+
     /* ---------- Buttons ---------- */
     .ct-btn {
       display: inline-flex;
@@ -723,23 +733,34 @@
       </div>
 
       <div class="ct-section-title">
-        <span>Recent sign-in activity</span>
-        <button id="clearHistoryBtn" class="ct-btn ct-btn-text danger" title="Clear this list" aria-label="Clear recent sign-in activity">
-          <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-delete"/></svg>
-          Clear
-        </button>
+        <span>Saved passkeys</span>
+        <span id="credCountBadge" class="ct-badge" hidden></span>
+      </div>
+
+      <!-- Touch gate: shown instead of the list whenever list_credentials
+           (or a per-row delete_credential) comes back touch_required.
+           Viewing or removing what's saved on the device is gated by the
+           same fingerprint/UV ceremony as everyday sign-in -- no PIN, no
+           typed secret, just a touch the device itself prompts for on its
+           own OLED. Copy matches the existing ceremony prompt verbatim
+           (see injected.js's "Touch your Cryptick Token to verify...")
+           rather than inventing new wording for the same wait. -->
+      <div id="credTouchGate" class="ct-card" hidden>
+        <div style="display:flex; align-items:center; gap: var(--ct-sp-2);">
+          <span class="ct-dot yellow" style="animation: ct-pulse-ring 1.4s cubic-bezier(0.4,0,0.6,1) infinite;"></span>
+          <span id="credTouchMessage" class="ct-switch-desc">Touch your Cryptick Token to verify&hellip;</span>
+        </div>
       </div>
 
       <div class="ct-search">
         <svg class="ct-icon"><use href="#ic-search"/></svg>
-        <input type="text" id="passkeySearch" placeholder="Search by site or account">
+        <input type="text" id="credSearch" placeholder="Search by site or account">
       </div>
 
-      <div id="passkeyList" class="ct-list" style="overflow-y: auto; flex: 1; min-height: 0;">
+      <div id="credList" class="ct-list" style="overflow-y: auto; flex: 1; min-height: 0;">
         <div class="ct-empty">
-          <svg class="ct-icon"><use href="#ic-key"/></svg>
-          <span>No sign-ins yet</span>
-          <span class="ct-empty-note">Sign in anywhere that supports passkeys and it'll show up here.</span>
+          <svg class="ct-icon" style="animation: ct-spin 1s linear infinite;"><use href="#ic-refresh"/></svg>
+          <span>Reading saved passkeys from your Cryptick Token&hellip;</span>
         </div>
       </div>
     </div>
@@ -816,6 +837,18 @@
           <span id="devPillDot" class="ct-dot green"></span>
           <span id="devPillText">Active</span>
         </span>
+      </div>
+
+      <!-- Device picker: only shown once list_devices actually reports more
+           than one device (see renderDevicePicker() in popup.js) -- no
+           picker UI to maintain for the single-device case everyone has
+           today. -->
+      <div id="devicePickerCard" class="ct-card" hidden>
+        <div class="ct-section-title" style="margin-bottom: 6px;">Active device</div>
+        <div class="ct-search" style="margin-bottom: 0;">
+          <svg class="ct-icon"><use href="#ic-device"/></svg>
+          <select id="devicePicker" class="ct-select"></select>
+        </div>
       </div>
 
       <div class="ct-card">

@@ -96,29 +96,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep channel open
   }
 
-  if (action === 'delete_passkey') {
-    const credId = payload?.id;
-    const rpId = payload?.rpId;
-    const user = payload?.user;
-    chrome.storage.local.get(['cryptick_passkeys_history'], (data) => {
-      const list = data.cryptick_passkeys_history || [];
-      const updated = list.filter(item => {
-        if (credId && item.id) return item.id !== credId;
-        if (rpId && user) return !(item.rpId === rpId && item.user === user);
-        if (rpId) return item.rpId !== rpId;
-        return true;
-      });
-      chrome.storage.local.set({ cryptick_passkeys_history: updated }, () => {
-        sendResponse({ status: 'ok', remaining: updated.length });
-      });
-    });
-    return true;
-  }
+  // Actions that need no extra fields -- the native host infers everything
+  // it needs from the action name alone.
+  const NATIVE_ACTIONS_NO_PAYLOAD = [
+    'ping', 'restart', 'totp_list', 'sync_time', 'totp_sync_time',
+    'list_devices', 'list_credentials'
+  ];
+  // Actions that forward the popup's payload straight through.
+  // delete_credential carries no secret here -- it's gated by the device's
+  // own fingerprint/UV ceremony (the host blocks on a physical touch, same
+  // as a normal sign-in), not by anything typed into this extension.
+  const NATIVE_ACTIONS_WITH_PAYLOAD = [
+    'create', 'get', 'totp_code', 'delete_credential', 'select_device'
+  ];
 
   let nativeMsg = null;
-  if (action === 'ping' || action === 'restart' || action === 'totp_list' || action === 'sync_time' || action === 'totp_sync_time') {
+  if (NATIVE_ACTIONS_NO_PAYLOAD.includes(action)) {
     nativeMsg = { action };
-  } else if (action === 'create' || action === 'get' || action === 'totp_code') {
+  } else if (NATIVE_ACTIONS_WITH_PAYLOAD.includes(action)) {
     nativeMsg = { action, ...payload };
   } else {
     sendResponse({ status: 'error', message: 'Unknown action' });
@@ -127,22 +122,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   sendNativeMessage(nativeMsg)
     .then((result) => {
-      if (result && result.status === 'ok' && (action === 'create' || action === 'get')) {
-        const rpId = payload?.rpId || payload?.rp?.id || 'WebAuthn Relying Party';
-        const user = payload?.user?.name || payload?.user?.displayName || null;
-        chrome.storage.local.get(['cryptick_passkeys_history'], (data) => {
-          const list = data.cryptick_passkeys_history || [];
-          const entry = {
-            id: 'cred_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-            rpId,
-            user,
-            action,
-            time: Date.now()
-          };
-          const updated = [entry, ...list.filter(item => !(item.rpId === rpId && item.user === user))].slice(0, 50);
-          chrome.storage.local.set({ cryptick_passkeys_history: updated });
-        });
-      }
       if (action === 'restart') {
         setTimeout(() => getLiveStatus(true), 1200);
       }

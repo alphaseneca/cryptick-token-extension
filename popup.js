@@ -13,7 +13,8 @@
 // single `chrome.*` call site works unmodified on both targets.
 
 let allTotpAccounts = [];
-let allPasskeys = [];
+let allCredentialGroups = [];
+let allDevices = [];
 let activeCountdownIntervals = {};
 let lastConnectionState = null;
 let toastHideTimer = null;
@@ -56,9 +57,10 @@ function initTabs() {
       if (targetId === 'tab-totp') {
         if (lastConnectionState) loadTotpAccounts();
       } else if (targetId === 'tab-passkeys') {
-        if (lastConnectionState) loadPasskeyHistory();
+        if (lastConnectionState) loadCredentials();
       } else if (targetId === 'tab-device') {
         checkStatus();
+        loadDevices();
       }
     });
   });
@@ -109,13 +111,24 @@ function applyStatus(res) {
 
   // On the transition into "connected," proactively sync the hardware clock
   // and refresh whichever tab is active -- the daemon already does the sync
-  // work; we're just the ones kicking it off.
-  if (isConnected && lastConnectionState === false) {
+  // work; we're just the ones kicking it off. `lastConnectionState === null`
+  // covers the very first status this popup instance ever sees (e.g. the
+  // token was already plugged in before the popup was opened) -- that's a
+  // real "newly connected, from this popup's point of view" case too, just
+  // without the clock re-sync, which the background worker already handles
+  // on its own cold-start rehydration path.
+  const isReconnectTransition = isConnected && lastConnectionState === false;
+  const isFirstConnectedObservation = isConnected && lastConnectionState === null;
+
+  if (isReconnectTransition) {
     syncClock();
+  }
+  if (isReconnectTransition || isFirstConnectedObservation) {
+    loadDevices();
     const activeTab = document.querySelector('.ct-tab.active');
     const activeTabId = activeTab ? activeTab.getAttribute('data-tab') : null;
     if (activeTabId === 'tab-totp') loadTotpAccounts();
-    else if (activeTabId === 'tab-passkeys') loadPasskeyHistory();
+    else if (activeTabId === 'tab-passkeys') loadCredentials();
   }
   lastConnectionState = isConnected;
 
@@ -208,223 +221,312 @@ async function checkStatus(forceFresh = false) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Platform Passkey Delegation toggle + recent sign-in activity
+// 3. Platform Passkey Delegation toggle
 //    (ARCHITECTURE.md #3 "Platform Passkey Delegation" escape hatch --
 //    this must stay user-controllable.)
 // ---------------------------------------------------------------------------
-function initPasskeyTab() {
+function initBridgeToggle() {
   const toggle = document.getElementById('bridgeToggle');
-  if (toggle) {
-    chrome.storage.local.get(['cryptick_bridge_enabled'], (data) => {
-      toggle.checked = data.cryptick_bridge_enabled !== false;
-    });
-    toggle.addEventListener('change', () => {
-      chrome.storage.local.set({ cryptick_bridge_enabled: toggle.checked });
-    });
-  }
-
-  const clearBtn = document.getElementById('clearHistoryBtn');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
-      chrome.storage.local.remove(['cryptick_passkeys_history'], () => {
-        allPasskeys = [];
-        renderPasskeyList([]);
-      });
-    });
-  }
-
-  initPasskeySearch();
-  loadPasskeyHistory();
+  if (!toggle) return;
+  chrome.storage.local.get(['cryptick_bridge_enabled'], (data) => {
+    toggle.checked = data.cryptick_bridge_enabled !== false;
+  });
+  toggle.addEventListener('change', () => {
+    chrome.storage.local.set({ cryptick_bridge_enabled: toggle.checked });
+  });
 }
 
-function initPasskeySearch() {
-  const searchInput = document.getElementById('passkeySearch');
+// ---------------------------------------------------------------------------
+// 3b. Saved passkeys -- live from the daemon's list_credentials, grouped by
+//     relying party. Replaces the old local "recent sign-in activity" log,
+//     which was never what the hardware actually held (see NOTES.md #3's
+//     correctness finding): this reads the real resident credentials off
+//     the token itself, every time, the same way the Authenticator tab
+//     reads real OATH accounts rather than caching them.
+//
+//     Listing and deleting a saved credential are both gated by the
+//     token's own fingerprint/UV ceremony -- the same touch prompt as a
+//     normal sign-in, shown on the device's own OLED. There is no PIN
+//     anywhere in this flow and this file never asks for or holds one; the
+//     only thing rendered here is a "waiting for your touch" state, worded
+//     the same way the real sign-in ceremony already is (see injected.js's
+//     "Touch your Cryptick Token to verify...").
+// ---------------------------------------------------------------------------
+const CRED_TOUCH_POLL_MS = 1200;
+const CRED_TOUCH_MAX_ATTEMPTS = 40; // ~48s, in line with injected.js's own 60s ceremony timeout
+
+// Sends a native-host-backed action and transparently rides out a
+// `touch_required` response by polling the same request again -- the
+// daemon is expected to keep answering `touch_required` while the token's
+// touch/UV ceremony is still pending, then settle into a terminal status
+// (ok/error) once the user touches the sensor or it times out.
+// `onTouchPending` fires once per pending poll so the caller can show (or
+// keep showing) the "touch your key" state.
+async function sendWithTouchWait(action, payload, onTouchPending) {
+  for (let attempt = 0; attempt <= CRED_TOUCH_MAX_ATTEMPTS; attempt++) {
+    let res;
+    try {
+      res = await chrome.runtime.sendMessage(payload ? { action, payload } : { action });
+    } catch (err) {
+      return { status: 'error', message: "Couldn't reach the bridge service." };
+    }
+    if (res && res.status === 'touch_required') {
+      if (onTouchPending) onTouchPending(attempt);
+      await new Promise((resolve) => setTimeout(resolve, CRED_TOUCH_POLL_MS));
+      continue;
+    }
+    return res;
+  }
+  return { status: 'error', message: 'Timed out waiting for your touch.' };
+}
+
+function initCredentialsTab() {
+  const searchInput = document.getElementById('credSearch');
   if (!searchInput) return;
   searchInput.addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
-    renderPasskeyList(filterPasskeys(q), q);
+    renderCredentialGroups(filterCredentialGroups(q));
   });
 }
 
-function filterPasskeys(q) {
-  if (!q) return allPasskeys;
-  return allPasskeys.filter(item =>
-    (item.rpId && item.rpId.toLowerCase().includes(q)) ||
-    (item.user && item.user.toLowerCase().includes(q))
-  );
+function showCredTouchGate() {
+  const gate = document.getElementById('credTouchGate');
+  if (gate) gate.hidden = false;
 }
 
-function loadPasskeyHistory() {
-  chrome.storage.local.get(['cryptick_passkeys_history'], (data) => {
-    allPasskeys = data.cryptick_passkeys_history || [];
-    const searchInput = document.getElementById('passkeySearch');
-    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-    renderPasskeyList(filterPasskeys(q), q);
-  });
+function hideCredTouchGate() {
+  const gate = document.getElementById('credTouchGate');
+  if (gate) gate.hidden = true;
 }
 
-function renderPasskeyList(items, query = '') {
-  const listEl = document.getElementById('passkeyList');
+async function loadCredentials() {
+  const listEl = document.getElementById('credList');
   if (!listEl) return;
 
-  if (allPasskeys.length === 0) {
+  hideCredTouchGate();
+  hideCredCount();
+  listEl.innerHTML = `
+    <div class="ct-empty">
+      <svg class="ct-icon" style="animation: ct-spin 1s linear infinite;"><use href="#ic-refresh"/></svg>
+      <span>Reading saved passkeys from your Cryptick Token&hellip;</span>
+    </div>`;
+
+  const res = await sendWithTouchWait('list_credentials', null, showCredTouchGate);
+  hideCredTouchGate();
+
+  if (res && res.status === 'ok') {
+    allCredentialGroups = res.relyingParties || [];
+    renderCredCount(res.totalCredentials, res.remainingSlots);
+    const searchInput = document.getElementById('credSearch');
+    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    renderCredentialGroups(filterCredentialGroups(q));
+    return;
+  }
+
+  renderCredentialError((res && res.message) || "Couldn't load saved passkeys from your Cryptick Token.");
+}
+
+function renderCredentialError(msg) {
+  const listEl = document.getElementById('credList');
+  if (!listEl) return;
+  listEl.innerHTML = `
+    <div class="ct-empty">
+      <svg class="ct-icon"><use href="#ic-error"/></svg>
+      <span>${escapeHtml(msg)}</span>
+    </div>`;
+}
+
+function hideCredCount() {
+  const badge = document.getElementById('credCountBadge');
+  if (badge) badge.hidden = true;
+}
+
+function renderCredCount(total, remaining) {
+  const badge = document.getElementById('credCountBadge');
+  if (!badge) return;
+  if (typeof total !== 'number') {
+    badge.hidden = true;
+    return;
+  }
+  badge.hidden = false;
+  badge.textContent = (typeof remaining === 'number')
+    ? `${total} saved · ${remaining} slots left`
+    : `${total} saved`;
+}
+
+function filterCredentialGroups(q) {
+  if (!q) return allCredentialGroups.filter(rp => (rp.credentials || []).length > 0);
+  return allCredentialGroups
+    .map(rp => {
+      const rpMatches = (rp.rpName && rp.rpName.toLowerCase().includes(q)) ||
+                         (rp.rpId && rp.rpId.toLowerCase().includes(q));
+      const credentials = (rp.credentials || []).filter(c =>
+        rpMatches ||
+        (c.userName && c.userName.toLowerCase().includes(q)) ||
+        (c.userDisplayName && c.userDisplayName.toLowerCase().includes(q))
+      );
+      return credentials.length ? { ...rp, credentials } : null;
+    })
+    .filter(Boolean);
+}
+
+function totalCredentialCount(groups) {
+  return groups.reduce((n, rp) => n + (rp.credentials || []).length, 0);
+}
+
+function renderCredentialGroups(groups) {
+  const listEl = document.getElementById('credList');
+  if (!listEl) return;
+
+  if (totalCredentialCount(allCredentialGroups) === 0) {
     listEl.innerHTML = `
       <div class="ct-empty">
         <svg class="ct-icon"><use href="#ic-key"/></svg>
-        <span>No sign-ins yet</span>
-        <span class="ct-empty-note">Sign in anywhere that supports passkeys and it'll show up here.</span>
+        <span>No saved passkeys</span>
+        <span class="ct-empty-note">Passkeys you register with your Cryptick Token will show up here, grouped by site.</span>
       </div>`;
     return;
   }
 
-  if (items.length === 0 && query) {
+  if (groups.length === 0) {
     listEl.innerHTML = `
       <div class="ct-empty">
         <svg class="ct-icon"><use href="#ic-search"/></svg>
-        <span>No matches for &ldquo;${escapeHtml(query)}&rdquo;</span>
+        <span>No matches</span>
       </div>`;
     return;
   }
 
   listEl.innerHTML = '';
-  items.forEach(item => {
-    const wrap = document.createElement('div');
+  groups.forEach(rp => {
+    const section = document.createElement('div');
+    section.style.marginBottom = 'var(--ct-sp-2)';
 
-    const row = document.createElement('div');
-    row.className = 'ct-item';
+    const header = document.createElement('div');
+    header.className = 'ct-section-title';
+    header.style.marginBottom = '6px';
+    const rpLabel = rp.rpName || rp.rpId || 'Unknown site';
+    header.innerHTML = `<span>${escapeHtml(rpLabel)}</span><span class="ct-badge">${(rp.credentials || []).length}</span>`;
+    section.appendChild(header);
 
-    const domain = item.rpId || 'Unknown site';
-    const initial = domain.charAt(0).toUpperCase();
-    const user = item.user || 'Hardware passkey';
-    const timeFormatted = formatRelativeTime(item.time);
-    const actionBadge = item.action === 'create' ? 'Created' : 'Signed in';
+    const groupList = document.createElement('div');
+    groupList.className = 'ct-list';
+    groupList.style.marginBottom = 'var(--ct-sp-2)';
 
-    const mainCol = document.createElement('div');
-    mainCol.className = 'ct-item-main';
-    mainCol.innerHTML = `
-      <div class="ct-avatar">${escapeHtml(initial)}</div>
-      <div class="ct-item-content">
-        <span class="ct-item-title">${escapeHtml(domain)}</span>
-        <span class="ct-item-subtitle">${escapeHtml(user)} &bull; ${timeFormatted}</span>
-      </div>
-    `;
+    (rp.credentials || []).forEach(cred => {
+      groupList.appendChild(renderCredentialRow(rp, cred));
+    });
 
-    const actionsCol = document.createElement('div');
-    actionsCol.className = 'ct-item-actions';
+    section.appendChild(groupList);
+    listEl.appendChild(section);
+  });
+}
 
-    const badge = document.createElement('span');
-    badge.className = 'ct-badge';
-    badge.textContent = actionBadge;
+function renderCredentialRow(rp, cred) {
+  const row = document.createElement('div');
+  row.className = 'ct-item';
 
-    const delBtn = document.createElement('button');
-    delBtn.className = 'ct-btn-icon danger';
-    delBtn.title = 'Remove from this list';
-    delBtn.setAttribute('aria-label', `Remove ${domain} from recent activity`);
-    delBtn.innerHTML = `<svg class="ct-icon" style="width:14px;height:14px;"><use href="#ic-delete"/></svg>`;
+  const title = cred.userDisplayName || cred.userName || 'Passkey';
+  const subtitle = (cred.userName && cred.userName !== title) ? cred.userName : (rp.rpId || '');
+  const initial = title.charAt(0).toUpperCase() || '?';
 
-    const chevron = document.createElement('svg');
-    chevron.setAttribute('class', 'ct-icon ct-item-chevron');
-    chevron.innerHTML = `<use href="#ic-chevron"/>`;
+  const mainCol = document.createElement('div');
+  mainCol.className = 'ct-item-main';
+  mainCol.style.cursor = 'default';
+  mainCol.innerHTML = `
+    <div class="ct-avatar">${escapeHtml(initial)}</div>
+    <div class="ct-item-content">
+      <span class="ct-item-title">${escapeHtml(title)}</span>
+      <span class="ct-item-subtitle">${escapeHtml(subtitle)}</span>
+    </div>
+  `;
 
-    actionsCol.appendChild(badge);
+  const actionsCol = document.createElement('div');
+  actionsCol.className = 'ct-item-actions';
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'ct-btn-icon danger';
+  delBtn.title = 'Permanently delete this passkey from your Cryptick Token';
+  delBtn.setAttribute(
+    'aria-label',
+    `Permanently delete the passkey for ${title} on ${rp.rpName || rp.rpId || 'this site'} from your Cryptick Token`
+  );
+  delBtn.innerHTML = `<svg class="ct-icon" style="width:14px;height:14px;"><use href="#ic-delete"/></svg>`;
+
+  function resetRowActions() {
+    actionsCol.innerHTML = '';
     actionsCol.appendChild(delBtn);
-    actionsCol.appendChild(chevron);
+  }
 
-    row.appendChild(mainCol);
-    row.appendChild(actionsCol);
+  function triggerDeleteConfirm(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    actionsCol.innerHTML = '';
 
-    const details = document.createElement('div');
-    details.className = 'ct-item-details';
-    const fullDate = item.time ? new Date(item.time).toLocaleString() : 'Unknown time';
-    details.innerHTML = `
-      <div class="ct-detail-row"><span>Site</span><strong>${escapeHtml(domain)}</strong></div>
-      <div class="ct-detail-row"><span>Account</span><strong>${escapeHtml(user)}</strong></div>
-      <div class="ct-detail-row"><span>Last used</span><strong>${escapeHtml(fullDate)}</strong></div>
-      <div style="display:flex; justify-content:flex-end; margin-top: 4px;">
-        <button class="ct-btn-text danger detail-del-btn" style="font-size: var(--ct-fs-xs);">Remove</button>
-      </div>
-    `;
+    const warn = document.createElement('span');
+    warn.className = 'ct-badge';
+    warn.style.color = 'var(--ct-danger)';
+    warn.textContent = 'Delete from device?';
 
-    mainCol.addEventListener('click', () => {
-      details.classList.toggle('open');
-      row.classList.toggle('expanded', details.classList.contains('open'));
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'ct-btn-text';
+    cancelBtn.style.fontSize = 'var(--ct-fs-xs)';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', (ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      resetRowActions();
     });
 
-    function triggerDeleteConfirm(e) {
-      if (e && e.stopPropagation) e.stopPropagation();
-      actionsCol.innerHTML = '';
-
-      const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'ct-btn-text';
-      cancelBtn.style.fontSize = 'var(--ct-fs-xs)';
-      cancelBtn.textContent = 'Cancel';
-      cancelBtn.addEventListener('click', (ev) => {
-        if (ev && ev.stopPropagation) ev.stopPropagation();
-        actionsCol.innerHTML = '';
-        actionsCol.appendChild(badge);
-        actionsCol.appendChild(delBtn);
-        actionsCol.appendChild(chevron);
-      });
-
-      const confirmBtn = document.createElement('button');
-      confirmBtn.className = 'ct-btn-text danger';
-      confirmBtn.style.fontSize = 'var(--ct-fs-xs)';
-      confirmBtn.style.fontWeight = '700';
-      confirmBtn.textContent = 'Remove';
-      confirmBtn.addEventListener('click', (ev) => {
-        if (ev && ev.stopPropagation) ev.stopPropagation();
-        executeDeletePasskey(item, wrap);
-      });
-
-      actionsCol.appendChild(cancelBtn);
-      actionsCol.appendChild(confirmBtn);
-    }
-
-    delBtn.addEventListener('click', triggerDeleteConfirm);
-    const detailDel = details.querySelector('.detail-del-btn');
-    if (detailDel) detailDel.addEventListener('click', triggerDeleteConfirm);
-
-    wrap.appendChild(row);
-    wrap.appendChild(details);
-    listEl.appendChild(wrap);
-  });
-}
-
-function executeDeletePasskey(item, element) {
-  element.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
-  element.style.opacity = '0';
-  element.style.transform = 'scale(0.97)';
-
-  chrome.runtime.sendMessage({
-    action: 'delete_passkey',
-    payload: { id: item.id, rpId: item.rpId, user: item.user }
-  }, () => {
-    chrome.storage.local.get(['cryptick_passkeys_history'], (data) => {
-      let updated = data.cryptick_passkeys_history || [];
-      updated = item.id
-        ? updated.filter(x => x.id !== item.id)
-        : updated.filter(x => !(x.rpId === item.rpId && x.user === item.user));
-      chrome.storage.local.set({ cryptick_passkeys_history: updated }, () => {
-        allPasskeys = updated;
-        const searchInput = document.getElementById('passkeySearch');
-        const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        renderPasskeyList(filterPasskeys(q), q);
-      });
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'ct-btn-text danger';
+    confirmBtn.style.fontSize = 'var(--ct-fs-xs)';
+    confirmBtn.style.fontWeight = '700';
+    confirmBtn.textContent = 'Delete from device';
+    confirmBtn.addEventListener('click', (ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      executeDeleteCredential(rp, cred, row, resetRowActions);
     });
-  });
+
+    actionsCol.appendChild(warn);
+    actionsCol.appendChild(cancelBtn);
+    actionsCol.appendChild(confirmBtn);
+  }
+
+  delBtn.addEventListener('click', triggerDeleteConfirm);
+  actionsCol.appendChild(delBtn);
+
+  row.appendChild(mainCol);
+  row.appendChild(actionsCol);
+  return row;
 }
 
-function formatRelativeTime(ts) {
-  if (!ts) return 'Unknown time';
-  const diffSec = Math.floor((Date.now() - ts) / 1000);
-  if (diffSec < 60) return 'Just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 7) return `${diffDay}d ago`;
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+function touchPendingBadgeHtml() {
+  return `<span class="ct-badge"><svg class="ct-icon" style="width:11px;height:11px;vertical-align:-1px;"><use href="#ic-key"/></svg> Touch to verify&hellip;</span>`;
+}
+
+async function executeDeleteCredential(rp, cred, rowEl, resetRowActions) {
+  const actionsCol = rowEl.querySelector('.ct-item-actions');
+  if (actionsCol) actionsCol.innerHTML = touchPendingBadgeHtml();
+
+  const res = await sendWithTouchWait(
+    'delete_credential',
+    { credentialId: cred.credentialId, rpId: rp.rpId },
+    () => { if (actionsCol) actionsCol.innerHTML = touchPendingBadgeHtml(); }
+  );
+
+  if (res && res.status === 'ok') {
+    rowEl.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+    rowEl.style.opacity = '0';
+    rowEl.style.transform = 'scale(0.97)';
+    showToast('Passkey deleted from your Cryptick Token.', 'success');
+    setTimeout(() => loadCredentials(), 160);
+    return;
+  }
+
+  showToast(
+    (res && res.message) || "Your Cryptick Token's bridge service couldn't delete that passkey -- nothing was removed.",
+    'error'
+  );
+  resetRowActions();
 }
 
 // ---------------------------------------------------------------------------
@@ -757,6 +859,79 @@ async function handleRestart() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// 7b. Device picker -- only shown once list_devices actually reports more
+//     than one device (per-task brief: don't build UI for a case that
+//     can't be exercised). Kept minimal: a single <select>, populated from
+//     real fields (id/name/transport/active) on the Device tab, calling
+//     select_device on change. The top-bar status chip and the rest of the
+//     Device tab already update from the next checkStatus() poll, so
+//     switching devices doesn't need any bespoke chip-update logic here.
+// ---------------------------------------------------------------------------
+async function loadDevices() {
+  let res;
+  try {
+    res = await chrome.runtime.sendMessage({ action: 'list_devices' });
+  } catch (err) {
+    return; // Best-effort only -- the picker is a convenience, not a critical path.
+  }
+  if (!res || res.status !== 'ok' || !Array.isArray(res.devices)) return;
+  allDevices = res.devices;
+  renderDevicePicker();
+}
+
+function renderDevicePicker() {
+  const card = document.getElementById('devicePickerCard');
+  const select = document.getElementById('devicePicker');
+  if (!card || !select) return;
+
+  if (allDevices.length <= 1) {
+    card.hidden = true;
+    return;
+  }
+
+  card.hidden = false;
+  const activeDevice = allDevices.find(d => d.active);
+  const activeId = activeDevice ? activeDevice.id : null;
+
+  select.innerHTML = '';
+  allDevices.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    const transportLabel = d.transport === 'ble' ? 'Bluetooth' : (d.transport === 'usb' ? 'USB' : (d.transport || ''));
+    opt.textContent = d.name ? `${d.name} (${transportLabel})` : `Cryptick Token (${transportLabel})`;
+    if (d.id === activeId) opt.selected = true;
+    select.appendChild(opt);
+  });
+}
+
+async function handleDeviceSelect(e) {
+  const id = e.target.value;
+  if (!id) return;
+  e.target.disabled = true;
+
+  try {
+    const res = await chrome.runtime.sendMessage({ action: 'select_device', payload: { id } });
+    if (res && res.status === 'ok') {
+      allDevices = allDevices.map(d => ({ ...d, active: d.id === id }));
+      showToast('Switched active device.', 'success');
+      checkStatus(true);
+      const activeTab = document.querySelector('.ct-tab.active');
+      const activeTabId = activeTab ? activeTab.getAttribute('data-tab') : null;
+      if (activeTabId === 'tab-totp') loadTotpAccounts();
+      else if (activeTabId === 'tab-passkeys') loadCredentials();
+    } else {
+      showToast((res && res.message) || "Couldn't switch devices.", 'error');
+      renderDevicePicker(); // revert the select back to the real active device
+    }
+  } catch (err) {
+    showToast("Couldn't reach the bridge service.", 'error');
+    renderDevicePicker();
+  } finally {
+    e.target.disabled = false;
+  }
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -770,7 +945,8 @@ function escapeHtml(str) {
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
-  initPasskeyTab();
+  initBridgeToggle();
+  initCredentialsTab();
   initSearch();
 
   const manifest = chrome.runtime.getManifest ? chrome.runtime.getManifest() : null;
@@ -784,6 +960,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   checkStatus(false);
+  loadDevices();
 
   const statusInterval = setInterval(() => checkStatus(false), 1500);
   window.addEventListener('beforeunload', () => clearInterval(statusInterval));
@@ -809,14 +986,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const testConnBtn = document.getElementById('testConnBtn');
   if (testConnBtn) testConnBtn.addEventListener('click', runConnectionTest);
 
+  const devicePicker = document.getElementById('devicePicker');
+  if (devicePicker) devicePicker.addEventListener('change', handleDeviceSelect);
+
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== 'local') return;
-    if (changes.cryptick_passkeys_history) {
-      allPasskeys = changes.cryptick_passkeys_history.newValue || [];
-      const searchInput = document.getElementById('passkeySearch');
-      const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-      renderPasskeyList(filterPasskeys(q), q);
-    }
     if (changes.cryptick_cached_status) {
       applyStatus(changes.cryptick_cached_status.newValue);
     }
