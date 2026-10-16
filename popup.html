@@ -540,6 +540,34 @@
       margin-top: var(--ct-sp-2);
     }
 
+    /* ---------- Advanced disclosure (diagnostics most users never need) ---------- */
+    .ct-advanced { flex-shrink: 0; }
+    .ct-advanced summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: var(--ct-sp-2) var(--ct-sp-1);
+      font-size: var(--ct-fs-xs);
+      font-weight: 600;
+      color: var(--ct-text-muted);
+    }
+    .ct-advanced summary::-webkit-details-marker { display: none; }
+    .ct-advanced summary::before {
+      content: "";
+      width: 0; height: 0;
+      border-style: solid;
+      border-width: 4px 0 4px 6px;
+      border-color: transparent transparent transparent currentColor;
+      transition: transform var(--ct-spring);
+      flex-shrink: 0;
+    }
+    .ct-advanced[open] summary::before { transform: rotate(90deg); }
+    .ct-advanced summary:hover { color: var(--ct-text); }
+    .ct-advanced summary:focus-visible { box-shadow: inset 0 0 0 2px var(--ct-primary); border-radius: var(--ct-radius-sm); }
+    .ct-advanced .ct-card:first-of-type { margin-top: var(--ct-sp-1); }
+
     /* ---------- Empty state ---------- */
     .ct-empty {
       text-align: center; padding: var(--ct-sp-6) var(--ct-sp-4);
@@ -559,6 +587,28 @@
       flex-shrink: 0;
     }
     .ct-footer-version { color: var(--ct-text-dim); font-family: var(--ct-font-mono); }
+
+    /* ---------- Global toast ----------
+       Fixed to the popup window, not to any tab pane, so it's visible no
+       matter which tab was active when the action that triggered it ran. */
+    .ct-toast {
+      position: fixed;
+      left: var(--ct-sp-4);
+      right: var(--ct-sp-4);
+      bottom: 52px;
+      z-index: 10;
+      padding: var(--ct-sp-2) var(--ct-sp-3);
+      border-radius: var(--ct-radius-md);
+      font-size: var(--ct-fs-xs);
+      line-height: 1.4;
+      background: var(--ct-bg-raised);
+      border: 1px solid var(--ct-border-strong);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      color: var(--ct-text);
+      animation: ct-fade-up 0.18s var(--ct-spring);
+    }
+    .ct-toast.error { border-color: var(--ct-danger); color: var(--ct-danger); }
+    .ct-toast.success { border-color: var(--ct-success-dim); }
   </style>
 </head>
 <body>
@@ -733,8 +783,6 @@
         </button>
       </div>
 
-      <div id="totpSyncBanner" class="ct-result-line" style="display: none;"></div>
-
       <div id="totpContainer" class="ct-list" style="overflow-y: auto; flex: 1; min-height: 0;">
         <div class="ct-empty">
           <svg class="ct-icon" style="animation: ct-spin 1s linear infinite;"><use href="#ic-refresh"/></svg>
@@ -790,41 +838,50 @@
         </div>
       </div>
 
-      <div class="ct-card">
-        <div class="ct-switch-row">
-          <div style="display:flex; align-items:center; gap: var(--ct-sp-2);">
-            <span id="devClockDot" class="ct-dot green"></span>
-            <div>
-              <div class="ct-switch-label" style="font-size: var(--ct-fs-sm);">Hardware clock</div>
-              <div id="devClockDesc" class="ct-switch-desc">&mdash;</div>
-            </div>
+      <!-- Same .ct-clock-bar component as the Authenticator tab -- one clock
+           control, one look, not a second card styled as a toggle row. -->
+      <div class="ct-clock-bar">
+        <div style="display: flex; align-items: center; gap: var(--ct-sp-2); min-width: 0; flex: 1;">
+          <span id="devClockDot" class="ct-dot green"></span>
+          <div style="display:flex; flex-direction:column; min-width:0;">
+            <span style="font-size: var(--ct-fs-sm); font-weight: 600;">Hardware clock</span>
+            <span id="devClockDesc" style="font-size: var(--ct-fs-2xs); color: var(--ct-text-muted);">&mdash;</span>
           </div>
-          <button id="syncTimeBtn" class="ct-btn ct-btn-tonal" title="Sync the token's clock with this computer">
-            <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-refresh"/></svg>
-            Sync
-          </button>
         </div>
-      </div>
-
-      <div class="ct-card">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: var(--ct-fs-sm); font-weight: 600;">Test connection</span>
-          <button id="testConnBtn" class="ct-btn ct-btn-tonal">
-            <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-link"/></svg>
-            Run
-          </button>
-        </div>
-        <div id="testConnResult" class="ct-result-line"></div>
-      </div>
-
-      <div style="display: flex; gap: var(--ct-sp-2); flex-shrink: 0;">
-        <button id="restartBtn" class="ct-btn ct-btn-tonal" style="flex: 1;">
-          <svg class="ct-icon"><use href="#ic-power"/></svg>
-          Restart bridge service
+        <button id="syncTimeBtn" class="ct-btn ct-btn-tonal" title="Sync the token's clock with this computer">
+          <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-refresh"/></svg>
+          Sync
         </button>
       </div>
+
+      <details class="ct-advanced">
+        <summary>Advanced</summary>
+
+        <div class="ct-card">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: var(--ct-fs-sm); font-weight: 600;">Test connection</span>
+            <button id="testConnBtn" class="ct-btn ct-btn-tonal">
+              <svg class="ct-icon" style="width:13px;height:13px;"><use href="#ic-link"/></svg>
+              Run
+            </button>
+          </div>
+          <div id="testConnResult" class="ct-result-line"></div>
+        </div>
+
+        <div style="display: flex; gap: var(--ct-sp-2); flex-shrink: 0;">
+          <button id="restartBtn" class="ct-btn ct-btn-tonal" style="flex: 1;">
+            <svg class="ct-icon"><use href="#ic-power"/></svg>
+            Restart bridge service
+          </button>
+        </div>
+      </details>
     </div>
   </div>
+
+  <!-- Global toast: lives outside every tab pane so feedback from an action
+       triggered on one tab (e.g. clock sync on the Device tab) is never
+       rendered into a pane the user isn't currently looking at. -->
+  <div id="ctToast" class="ct-toast" role="status" aria-live="polite" hidden></div>
 
   <!-- Footer -->
   <div class="ct-footer">

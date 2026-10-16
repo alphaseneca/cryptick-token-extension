@@ -16,6 +16,26 @@ let allTotpAccounts = [];
 let allPasskeys = [];
 let activeCountdownIntervals = {};
 let lastConnectionState = null;
+let toastHideTimer = null;
+
+// ---------------------------------------------------------------------------
+// 0. Global toast
+//
+// Lives outside every .ct-pane (see #ctToast in popup.html) specifically so
+// feedback from an action fired on one tab -- clock sync on the Device tab
+// is the case that found this -- is never written into a pane's own result
+// line while a *different* pane is the one actually visible. A pane-scoped
+// banner only ever helps the user if they're looking at that pane.
+// ---------------------------------------------------------------------------
+function showToast(message, kind) {
+  const el = document.getElementById('ctToast');
+  if (!el) return;
+  el.textContent = message;
+  el.className = 'ct-toast' + (kind ? ' ' + kind : '');
+  el.hidden = false;
+  if (toastHideTimer) clearTimeout(toastHideTimer);
+  toastHideTimer = setTimeout(() => { el.hidden = true; }, kind === 'error' ? 3500 : 2500);
+}
 
 // ---------------------------------------------------------------------------
 // 1. Tab navigation
@@ -660,7 +680,6 @@ async function syncClock(btn) {
     btn.innerHTML = `<svg class="ct-icon" style="width:13px;height:13px; animation: ct-spin 0.8s linear infinite;"><use href="#ic-refresh"/></svg><span>Syncing&hellip;</span>`;
   }
 
-  const bannerEl = document.getElementById('totpSyncBanner');
   const totpClockDot = document.getElementById('totpClockDot');
   const totpClockBadge = document.getElementById('totpClockBadge');
   const devClockDot = document.getElementById('devClockDot');
@@ -673,25 +692,13 @@ async function syncClock(btn) {
       if (totpClockBadge) totpClockBadge.textContent = 'In sync';
       if (devClockDot) devClockDot.className = 'ct-dot green';
       if (devClockDesc) devClockDesc.textContent = 'In sync with this computer';
-      if (bannerEl) {
-        bannerEl.textContent = 'Hardware clock synced.';
-        bannerEl.style.display = 'block';
-        setTimeout(() => { bannerEl.style.display = 'none'; }, 2500);
-      }
+      showToast('Hardware clock synced.', 'success');
       loadTotpAccounts();
     } else {
-      if (bannerEl) {
-        bannerEl.textContent = "Couldn't sync the hardware clock. Try again once the token is connected.";
-        bannerEl.style.display = 'block';
-        setTimeout(() => { bannerEl.style.display = 'none'; }, 3500);
-      }
+      showToast("Couldn't sync the hardware clock. Try again once the token is connected.", 'error');
     }
   } catch (err) {
-    if (bannerEl) {
-      bannerEl.textContent = "Couldn't reach the bridge service.";
-      bannerEl.style.display = 'block';
-      setTimeout(() => { bannerEl.style.display = 'none'; }, 3500);
-    }
+    showToast("Couldn't reach the bridge service.", 'error');
   } finally {
     if (btn) {
       btn.disabled = false;
