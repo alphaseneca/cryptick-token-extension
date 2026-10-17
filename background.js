@@ -44,6 +44,7 @@ async function getLiveStatus(forceFresh = false) {
       cachedStatus = res;
     } else {
       cachedStatus = res || { status: 'error', message: 'No response from host' };
+      console.error('[Cryptick Token] status query failed:', cachedStatus.message || cachedStatus);
     }
     lastStatusFetchTime = Date.now();
 
@@ -57,6 +58,7 @@ async function getLiveStatus(forceFresh = false) {
     chrome.storage.local.set({ cryptick_cached_status: cachedStatus });
     return cachedStatus;
   } catch (err) {
+    console.error('[Cryptick Token] status query threw:', err.message || err);
     cachedStatus = {
       status: 'error',
       message: err.message || 'Host offline',
@@ -92,7 +94,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (action === 'status') {
     getLiveStatus(request.forceFresh || false)
       .then((res) => sendResponse(res))
-      .catch((err) => sendResponse({ status: 'error', message: err.message }));
+      .catch((err) => {
+        console.error('[Cryptick Token] status action failed:', err.message || err);
+        sendResponse({ status: 'error', message: err.message });
+      });
     return true; // Keep channel open
   }
 
@@ -125,9 +130,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (action === 'restart') {
         setTimeout(() => getLiveStatus(true), 1200);
       }
+      if (result && result.status === 'error') {
+        console.error(`[Cryptick Token] action '${action}' failed:`, result.message || result);
+      }
       sendResponse(result);
     })
-    .catch((err) => sendResponse({ status: 'error', message: err.message }));
+    .catch((err) => {
+      console.error(`[Cryptick Token] action '${action}' threw:`, err.message || err);
+      sendResponse({ status: 'error', message: err.message });
+    });
 
   return true; // Keep message channel open for async response
 });

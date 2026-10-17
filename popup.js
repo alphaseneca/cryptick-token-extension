@@ -268,6 +268,7 @@ async function sendWithTouchWait(action, payload, onTouchPending) {
     try {
       res = await chrome.runtime.sendMessage(payload ? { action, payload } : { action });
     } catch (err) {
+      console.error(`[Cryptick Token] '${action}' could not reach the background service:`, err.message || err);
       return { status: 'error', message: "Couldn't reach the bridge service." };
     }
     if (res && res.status === 'touch_required') {
