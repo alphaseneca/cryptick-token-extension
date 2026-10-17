@@ -71,15 +71,6 @@ npm run pack
 
 ---
 
-## Part of the Cryptick Token Ecosystem
-
-- [Main Consolidated Repository](https://github.com/alphaseneca/cryptick-token)
-- [Firmware & Core Logic](https://github.com/alphaseneca/cryptick-token-code)
-- [Host Daemon, CLI & SmartCard PIV](https://github.com/alphaseneca/cryptick-token-daemon)
-- [Hardware Schematics & PCB (KiCad)](https://github.com/alphaseneca/cryptick-token-pcb)
-
----
-
 ## License
 
 Licensed under the [MIT License](LICENSE).
