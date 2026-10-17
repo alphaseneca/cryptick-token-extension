@@ -43,7 +43,7 @@
         window.postMessage({
           source: 'cryptick-content',
           requestId,
-          result: { status: 'disabled', message: 'Cryptick passkey bridge is toggled off' }
+          result: { status: 'disabled', message: 'Cryptick Token passkey bridge is toggled off' }
         }, '*');
         return;
       }
@@ -64,7 +64,7 @@
       window.postMessage({
         source: 'cryptick-content',
         requestId,
-        error: err.message || 'Cryptick bridge communication error'
+        error: err.message || 'Cryptick Token bridge communication error'
       }, '*');
     }
   });
