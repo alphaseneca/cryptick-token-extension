@@ -539,6 +539,17 @@ async function loadTotpAccounts() {
   const container = document.getElementById('totpContainer');
   if (!container) return;
 
+  // The loading state below immediately detaches every row currently in
+  // `container`, including any mid-countdown "Get code" chip -- clear
+  // their intervals here, not just in fetchTotpCode's same-account guard,
+  // or a reload while a code is ticking (e.g. switching back to this tab)
+  // leaves a setInterval running once a second against nodes no longer in
+  // the document until it naturally expires up to ~30s later.
+  for (const name of Object.keys(activeCountdownIntervals)) {
+    clearInterval(activeCountdownIntervals[name]);
+  }
+  activeCountdownIntervals = {};
+
   container.innerHTML = `
     <div class="ct-empty">
       <svg class="ct-icon" style="animation: ct-spin 1s linear infinite;"><use href="#ic-refresh"/></svg>
@@ -865,7 +876,7 @@ async function handleRestart() {
 //     than one device (per-task brief: don't build UI for a case that
 //     can't be exercised). Rendered as the same .ct-card > .ct-list >
 //     .ct-item pattern as "Saved passkeys" and the Authenticator tab,
-//     populated from real fields (id/name/transport/active/last_seen) on
+//     populated from real fields (id/name/transport/active/lastSeen) on
 //     the Device tab, calling select_device on click. The top-bar status
 //     chip and the rest of the Device tab already update from the next
 //     checkStatus() poll, so switching devices doesn't need any bespoke
@@ -893,9 +904,11 @@ function deviceTransportIcon(transport) {
   return (transport === 'ble' || transport === 'bluetooth') ? 'ic-bluetooth' : 'ic-usb';
 }
 
-// Best-effort "last seen" phrasing from a Unix-seconds-epoch `last_seen`
+// Best-effort "last seen" phrasing from a Unix-seconds-epoch `lastSeen`
 // (daemon's devices.rs: `now()` is `SystemTime::now()...as_secs()`, and the
-// wire field is this value verbatim -- not milliseconds). Returns null --
+// wire field -- camelCase, per DeviceOut's #[serde(rename = "lastSeen")]
+// in webauthn-host/src/main.rs -- carries this value verbatim, not
+// milliseconds). Returns null --
 // never a placeholder string -- when the field isn't present, since a
 // daemon that hasn't picked up the new multi-device identity work yet may
 // not send it. Computed once per render, not on a ticking timer (this file
@@ -930,6 +943,19 @@ function renderDevicePicker() {
   const card = document.getElementById('devicePickerCard');
   const list = document.getElementById('devicePickerList');
   const countBadge = document.getElementById('deviceCountBadge');
+
+  // The hero title above the picker otherwise stays the generic "Cryptick
+  // Token" forever, even once this device has a custom name and the
+  // picker right below it is showing that same name on the active row --
+  // two labels for one device, visibly disagreeing. Independent of the
+  // picker's own hidden/shown state below, since a lone, custom-named
+  // device should say so even with no picker to show.
+  const devTitle = document.getElementById('devTitle');
+  if (devTitle) {
+    const active = allDevices.find(d => d.active);
+    devTitle.textContent = (active && active.name) ? active.name : 'Cryptick Token';
+  }
+
   if (!card || !list) return;
 
   if (allDevices.length <= 1) {
@@ -943,20 +969,33 @@ function renderDevicePicker() {
     countBadge.textContent = `${allDevices.length} devices`;
   }
 
+  // Rows are rebuilt from scratch below, which otherwise drops keyboard
+  // focus off the page entirely if it was on one of them -- capture which
+  // device (if any) had it so it can be restored after the rebuild.
+  const focusedId = list.contains(document.activeElement)
+    ? document.activeElement.dataset.deviceId
+    : null;
+
   const names = disambiguatedDeviceNames(allDevices);
   list.innerHTML = '';
   allDevices.forEach((d, i) => {
     const label = names[i];
-    const seen = d.active ? null : formatLastSeen(d.last_seen);
+    const seen = d.active ? null : formatLastSeen(d.lastSeen);
     const subtitle = seen ? `${deviceTransportLabel(d.transport)} · Last seen ${seen}` : deviceTransportLabel(d.transport);
     list.appendChild(renderDeviceRow(d, label, subtitle));
   });
+
+  if (focusedId) {
+    const toFocus = list.querySelector(`[data-device-id="${CSS.escape(focusedId)}"]`);
+    if (toFocus) toFocus.focus();
+  }
 }
 
 function renderDeviceRow(d, label, subtitle) {
   const row = document.createElement('button');
   row.type = 'button';
   row.className = 'ct-item';
+  row.dataset.deviceId = d.id;
   row.setAttribute('aria-pressed', d.active ? 'true' : 'false');
   row.setAttribute('aria-label', `${label} — ${subtitle}${d.active ? ' — active' : ''}`);
 
