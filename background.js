@@ -104,7 +104,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Actions that need no extra fields -- the native host infers everything
   // it needs from the action name alone.
   const NATIVE_ACTIONS_NO_PAYLOAD = [
-    'ping', 'restart', 'totp_list', 'sync_time', 'totp_sync_time',
+    'ping', 'restart', 'totp_list', 'sync_time',
     'list_devices', 'list_credentials'
   ];
   // Actions that forward the popup's payload straight through.
