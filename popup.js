@@ -893,14 +893,16 @@ function deviceTransportIcon(transport) {
   return (transport === 'ble' || transport === 'bluetooth') ? 'ic-bluetooth' : 'ic-usb';
 }
 
-// Best-effort "last seen" phrasing from a ms-epoch `last_seen`. Returns null
-// -- never a placeholder string -- when the field isn't present, since a
+// Best-effort "last seen" phrasing from a Unix-seconds-epoch `last_seen`
+// (daemon's devices.rs: `now()` is `SystemTime::now()...as_secs()`, and the
+// wire field is this value verbatim -- not milliseconds). Returns null --
+// never a placeholder string -- when the field isn't present, since a
 // daemon that hasn't picked up the new multi-device identity work yet may
 // not send it. Computed once per render, not on a ticking timer (this file
 // already moved away from 1s-interval clock displays once -- see NOTES.md).
 function formatLastSeen(ts) {
   if (typeof ts !== 'number' || !isFinite(ts) || ts <= 0) return null;
-  const deltaS = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  const deltaS = Math.max(0, Math.round(Date.now() / 1000 - ts));
   if (deltaS < 10) return 'just now';
   if (deltaS < 60) return `${deltaS}s ago`;
   const m = Math.round(deltaS / 60);
