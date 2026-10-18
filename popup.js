@@ -863,11 +863,13 @@ async function handleRestart() {
 // ---------------------------------------------------------------------------
 // 7b. Device picker -- only shown once list_devices actually reports more
 //     than one device (per-task brief: don't build UI for a case that
-//     can't be exercised). Kept minimal: a single <select>, populated from
-//     real fields (id/name/transport/active) on the Device tab, calling
-//     select_device on change. The top-bar status chip and the rest of the
-//     Device tab already update from the next checkStatus() poll, so
-//     switching devices doesn't need any bespoke chip-update logic here.
+//     can't be exercised). Rendered as the same .ct-card > .ct-list >
+//     .ct-item pattern as "Saved passkeys" and the Authenticator tab,
+//     populated from real fields (id/name/transport/active/last_seen) on
+//     the Device tab, calling select_device on click. The top-bar status
+//     chip and the rest of the Device tab already update from the next
+//     checkStatus() poll, so switching devices doesn't need any bespoke
+//     chip-update logic here.
 // ---------------------------------------------------------------------------
 async function loadDevices() {
   let res;
@@ -881,10 +883,52 @@ async function loadDevices() {
   renderDevicePicker();
 }
 
+function deviceTransportLabel(transport) {
+  if (transport === 'ble' || transport === 'bluetooth') return 'Bluetooth';
+  if (transport === 'usb') return 'USB';
+  return transport || 'Unknown';
+}
+
+function deviceTransportIcon(transport) {
+  return (transport === 'ble' || transport === 'bluetooth') ? 'ic-bluetooth' : 'ic-usb';
+}
+
+// Best-effort "last seen" phrasing from a ms-epoch `last_seen`. Returns null
+// -- never a placeholder string -- when the field isn't present, since a
+// daemon that hasn't picked up the new multi-device identity work yet may
+// not send it. Computed once per render, not on a ticking timer (this file
+// already moved away from 1s-interval clock displays once -- see NOTES.md).
+function formatLastSeen(ts) {
+  if (typeof ts !== 'number' || !isFinite(ts) || ts <= 0) return null;
+  const deltaS = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (deltaS < 10) return 'just now';
+  if (deltaS < 60) return `${deltaS}s ago`;
+  const m = Math.round(deltaS / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} h ago`;
+  return `${Math.round(h / 24)} d ago`;
+}
+
+// Two Cryptick Tokens very often share the same default name. Append a
+// stable, user-facing ordinal -- never the raw internal device id, which
+// this popup deliberately keeps out of user-facing copy throughout (see
+// NOTES.md #2) -- to any name that collides with another device's name in
+// the current list, so two rows are never shown as literally identical.
+function disambiguatedDeviceNames(devices) {
+  const seen = {};
+  return devices.map(d => {
+    const base = d.name || 'Cryptick Token';
+    seen[base] = (seen[base] || 0) + 1;
+    return seen[base] > 1 ? `${base} (${seen[base]})` : base;
+  });
+}
+
 function renderDevicePicker() {
   const card = document.getElementById('devicePickerCard');
-  const select = document.getElementById('devicePicker');
-  if (!card || !select) return;
+  const list = document.getElementById('devicePickerList');
+  const countBadge = document.getElementById('deviceCountBadge');
+  if (!card || !list) return;
 
   if (allDevices.length <= 1) {
     card.hidden = true;
@@ -892,24 +936,57 @@ function renderDevicePicker() {
   }
 
   card.hidden = false;
-  const activeDevice = allDevices.find(d => d.active);
-  const activeId = activeDevice ? activeDevice.id : null;
+  if (countBadge) {
+    countBadge.hidden = false;
+    countBadge.textContent = `${allDevices.length} devices`;
+  }
 
-  select.innerHTML = '';
-  allDevices.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.id;
-    const transportLabel = d.transport === 'ble' ? 'Bluetooth' : (d.transport === 'usb' ? 'USB' : (d.transport || ''));
-    opt.textContent = d.name ? `${d.name} (${transportLabel})` : `Cryptick Token (${transportLabel})`;
-    if (d.id === activeId) opt.selected = true;
-    select.appendChild(opt);
+  const names = disambiguatedDeviceNames(allDevices);
+  list.innerHTML = '';
+  allDevices.forEach((d, i) => {
+    const label = names[i];
+    const seen = d.active ? null : formatLastSeen(d.last_seen);
+    const subtitle = seen ? `${deviceTransportLabel(d.transport)} · Last seen ${seen}` : deviceTransportLabel(d.transport);
+    list.appendChild(renderDeviceRow(d, label, subtitle));
   });
 }
 
-async function handleDeviceSelect(e) {
-  const id = e.target.value;
+function renderDeviceRow(d, label, subtitle) {
+  const row = document.createElement('button');
+  row.type = 'button';
+  row.className = 'ct-item';
+  row.setAttribute('aria-pressed', d.active ? 'true' : 'false');
+  row.setAttribute('aria-label', `${label} — ${subtitle}${d.active ? ' — active' : ''}`);
+
+  const main = document.createElement('div');
+  main.className = 'ct-item-main';
+  main.innerHTML = `
+    <div class="ct-avatar"><svg class="ct-icon" style="width:15px;height:15px;"><use href="#${deviceTransportIcon(d.transport)}"/></svg></div>
+    <div class="ct-item-content">
+      <span class="ct-item-title">${escapeHtml(label)}</span>
+      <span class="ct-item-subtitle">${escapeHtml(subtitle)}</span>
+    </div>
+  `;
+
+  const actions = document.createElement('div');
+  actions.className = 'ct-item-actions';
+  if (d.active) {
+    actions.innerHTML = `<span class="ct-chip"><span class="ct-dot green"></span><span>Active</span></span>`;
+  }
+
+  row.appendChild(main);
+  row.appendChild(actions);
+  row.addEventListener('click', () => selectDevice(d.id));
+  return row;
+}
+
+async function selectDevice(id) {
   if (!id) return;
-  e.target.disabled = true;
+  const current = allDevices.find(d => d.active);
+  if (current && current.id === id) return; // already active -- nothing to do
+
+  const rows = document.querySelectorAll('#devicePickerList .ct-item');
+  rows.forEach(r => { r.disabled = true; });
 
   try {
     const res = await chrome.runtime.sendMessage({ action: 'select_device', payload: { id } });
@@ -923,13 +1000,11 @@ async function handleDeviceSelect(e) {
       else if (activeTabId === 'tab-passkeys') loadCredentials();
     } else {
       showToast((res && res.message) || "Couldn't switch devices.", 'error');
-      renderDevicePicker(); // revert the select back to the real active device
     }
   } catch (err) {
     showToast("Couldn't reach the bridge service.", 'error');
-    renderDevicePicker();
   } finally {
-    e.target.disabled = false;
+    renderDevicePicker(); // always rebuild from the real current state
   }
 }
 
@@ -987,8 +1062,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const testConnBtn = document.getElementById('testConnBtn');
   if (testConnBtn) testConnBtn.addEventListener('click', runConnectionTest);
 
-  const devicePicker = document.getElementById('devicePicker');
-  if (devicePicker) devicePicker.addEventListener('change', handleDeviceSelect);
+  // Device picker rows are rebuilt by renderDevicePicker() on every
+  // loadDevices()/selectDevice() call, so each row gets its own click
+  // listener at creation time (see renderDeviceRow()) -- no static
+  // listener to wire up here.
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== 'local') return;
