@@ -476,36 +476,11 @@
 
     .ct-item-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: var(--ct-sp-2); }
 
-    .ct-item-chevron {
-      width: 14px;
-      height: 14px;
-      color: var(--ct-text-dim);
-      transition: transform var(--ct-spring);
-      flex-shrink: 0;
-    }
-    .ct-item.expanded .ct-item-chevron { transform: rotate(180deg); }
-
     .ct-badge {
       font-size: var(--ct-fs-2xs); font-weight: 600; padding: 2px 7px;
       border-radius: var(--ct-radius-pill); background: var(--ct-surface);
       color: var(--ct-text-muted); white-space: nowrap;
     }
-
-    /* Expandable detail drawer under a list item */
-    .ct-item-details {
-      max-height: 0; opacity: 0; overflow: hidden;
-      transition: max-height 0.2s var(--ct-spring), opacity 0.15s ease, margin 0.15s ease;
-      background: var(--ct-surface);
-      border-radius: 0 0 var(--ct-radius-md) var(--ct-radius-md);
-      padding: 0 var(--ct-sp-3);
-      margin-top: -6px;
-    }
-    .ct-item-details.open { max-height: 160px; opacity: 1; padding: var(--ct-sp-2) var(--ct-sp-3) var(--ct-sp-2); margin-top: -4px; margin-bottom: 2px; }
-    .ct-detail-row {
-      display: flex; justify-content: space-between; gap: var(--ct-sp-2);
-      font-size: var(--ct-fs-xs); padding: 2px 0; color: var(--ct-text-muted);
-    }
-    .ct-detail-row strong { color: var(--ct-text); font-weight: 600; text-align: right; word-break: break-word; }
 
     /* ---------- TOTP code chip ---------- */
     .ct-code-chip {
@@ -684,9 +659,6 @@
       </symbol>
       <symbol id="ic-copy" viewBox="0 -960 960 960">
         <path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/>
-      </symbol>
-      <symbol id="ic-chevron" viewBox="0 -960 960 960">
-        <path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z"/>
       </symbol>
       <symbol id="ic-power" viewBox="0 -960 960 960">
         <path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-84 31.5-156.5T197-763l56 56q-44 44-68.5 102T160-480q0 134 93 227t227 93q134 0 227-93t93-227q0-67-24.5-125T707-707l56-56q54 54 85.5 126.5T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm-40-360v-440h80v440h-80Z"/>
