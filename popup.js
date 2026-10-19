@@ -578,6 +578,93 @@ async function loadTotpAccounts() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// 6a. Add / delete TOTP accounts. Writing a new secret (or removing one)
+//     waits on the same fingerprint/UV ceremony Get code already does on a
+//     device with a fingerprint enrolled -- real hardware testing showed
+//     this can take up to ~25s, so the submit button stays disabled and
+//     says so rather than looking stuck.
+// ---------------------------------------------------------------------------
+function setTotpAddCardOpen(open) {
+  const card = document.getElementById('totpAddCard');
+  const nameInput = document.getElementById('totpAddName');
+  const secretInput = document.getElementById('totpAddSecret');
+  const errorEl = document.getElementById('totpAddError');
+  if (!card) return;
+  card.hidden = !open;
+  if (errorEl) { errorEl.style.display = 'none'; errorEl.textContent = ''; }
+  if (open) {
+    if (nameInput) nameInput.value = '';
+    if (secretInput) secretInput.value = '';
+    if (nameInput) nameInput.focus();
+  }
+}
+
+function showTotpAddError(message) {
+  const errorEl = document.getElementById('totpAddError');
+  if (!errorEl) return;
+  errorEl.textContent = message;
+  errorEl.style.display = 'block';
+}
+
+async function handleAddTotpAccount() {
+  const nameInput = document.getElementById('totpAddName');
+  const secretInput = document.getElementById('totpAddSecret');
+  const submitBtn = document.getElementById('totpAddSubmitBtn');
+  const cancelBtn = document.getElementById('totpAddCancelBtn');
+  if (!nameInput || !secretInput || !submitBtn) return;
+
+  const name = nameInput.value.trim();
+  const secret = secretInput.value.trim();
+  if (!name) return showTotpAddError('Name is required.');
+  if (!secret) return showTotpAddError('Secret key is required.');
+
+  const prevText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Touch your token…';
+  if (cancelBtn) cancelBtn.disabled = true;
+  const errorEl = document.getElementById('totpAddError');
+  if (errorEl) errorEl.style.display = 'none';
+
+  try {
+    const res = await chrome.runtime.sendMessage({ action: 'totp_add', payload: { name, secret } });
+    if (res && res.status === 'ok') {
+      setTotpAddCardOpen(false);
+      showToast(`Added "${name}"`, 'success');
+      loadTotpAccounts();
+    } else {
+      showTotpAddError((res && res.message) || "Couldn't add account.");
+    }
+  } catch (err) {
+    showTotpAddError("Couldn't reach the bridge service.");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = prevText;
+    if (cancelBtn) cancelBtn.disabled = false;
+  }
+}
+
+async function handleDeleteTotpAccount(name, btn) {
+  if (!confirm(`Remove "${name}" from this token?`)) return;
+  const prevHtml = btn.innerHTML;
+  btn.disabled = true;
+  try {
+    const res = await chrome.runtime.sendMessage({ action: 'totp_delete', payload: { name } });
+    if (res && res.status === 'ok') {
+      showToast(`Removed "${name}"`, 'success');
+      loadTotpAccounts();
+    } else {
+      showToast((res && res.message) || "Couldn't remove account.", 'error');
+      btn.disabled = false;
+      btn.innerHTML = prevHtml;
+    }
+  } catch (err) {
+    showToast("Couldn't reach the bridge service.", 'error');
+    btn.disabled = false;
+    btn.innerHTML = prevHtml;
+  }
+}
+
 function renderTotpList(accounts) {
   const container = document.getElementById('totpContainer');
   if (!container) return;
@@ -629,7 +716,16 @@ function renderTotpList(accounts) {
     getBtn.textContent = 'Get code';
     getBtn.addEventListener('click', () => fetchTotpCode(acc, actionWrap, getBtn));
 
+    const delBtn = document.createElement('button');
+    delBtn.className = 'ct-btn-icon danger';
+    delBtn.style.marginLeft = '4px';
+    delBtn.title = `Remove "${acc}" from this token`;
+    delBtn.setAttribute('aria-label', `Remove ${acc} from this token`);
+    delBtn.innerHTML = `<svg class="ct-icon" style="width:14px;height:14px;"><use href="#ic-delete"/></svg>`;
+    delBtn.addEventListener('click', () => handleDeleteTotpAccount(acc, delBtn));
+
     actionWrap.appendChild(getBtn);
+    actionWrap.appendChild(delBtn);
     item.appendChild(avatar);
     item.appendChild(meta);
     item.appendChild(actionWrap);
@@ -1087,6 +1183,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const scanBtn = document.getElementById('totpScanBtn');
   if (scanBtn) scanBtn.addEventListener('click', loadTotpAccounts);
+
+  const totpAddBtn = document.getElementById('totpAddBtn');
+  if (totpAddBtn) totpAddBtn.addEventListener('click', () => setTotpAddCardOpen(true));
+  const totpAddCancelBtn = document.getElementById('totpAddCancelBtn');
+  if (totpAddCancelBtn) totpAddCancelBtn.addEventListener('click', () => setTotpAddCardOpen(false));
+  const totpAddSubmitBtn = document.getElementById('totpAddSubmitBtn');
+  if (totpAddSubmitBtn) totpAddSubmitBtn.addEventListener('click', handleAddTotpAccount);
 
   const totpSyncBtn = document.getElementById('totpSyncBtn');
   if (totpSyncBtn) totpSyncBtn.addEventListener('click', () => syncClock(totpSyncBtn));

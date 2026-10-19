@@ -112,7 +112,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // own fingerprint/UV ceremony (the host blocks on a physical touch, same
   // as a normal sign-in), not by anything typed into this extension.
   const NATIVE_ACTIONS_WITH_PAYLOAD = [
-    'create', 'get', 'totp_code', 'delete_credential', 'select_device'
+    'create', 'get', 'totp_code', 'delete_credential', 'select_device',
+    'totp_add', 'totp_delete'
   ];
 
   let nativeMsg = null;

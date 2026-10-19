@@ -654,6 +654,9 @@
       <symbol id="ic-error" viewBox="0 -960 960 960">
         <path d="M508.5-291.5Q520-303 520-320t-11.5-28.5Q497-360 480-360t-28.5 11.5Q440-337 440-320t11.5 28.5Q463-280 480-280t28.5-11.5ZM440-440h80v-240h-80v240Zm40 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
       </symbol>
+      <symbol id="ic-add" viewBox="0 -960 960 960">
+        <path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z"/>
+      </symbol>
       <symbol id="ic-delete" viewBox="0 -960 960 960">
         <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/>
       </symbol>
@@ -794,9 +797,33 @@
           <svg class="ct-icon"><use href="#ic-search"/></svg>
           <input type="text" id="totpSearch" placeholder="Search accounts">
         </div>
+        <button id="totpAddBtn" class="ct-btn ct-btn-tonal" style="height: 34px;" title="Add a new account">
+          <svg class="ct-icon"><use href="#ic-add"/></svg>
+        </button>
         <button id="totpScanBtn" class="ct-btn ct-btn-primary" style="height: 34px;" title="Rescan the token for OATH accounts">
           <svg class="ct-icon" style="color: var(--ct-on-primary);"><use href="#ic-refresh"/></svg>
         </button>
+      </div>
+
+      <!-- Add-account card: hidden until the + button opens it. Writing a
+           new secret to the token needs its own touch/UV ceremony on
+           devices with a fingerprint enrolled, same as Get code -- see
+           handleAddTotpAccount() in popup.js. -->
+      <div id="totpAddCard" class="ct-card" hidden style="flex-shrink: 0; margin-bottom: var(--ct-sp-2);">
+        <div class="ct-section-title" style="margin-bottom: 6px;">Add account</div>
+        <div class="ct-search" style="margin-bottom: var(--ct-sp-2);">
+          <svg class="ct-icon"><use href="#ic-key"/></svg>
+          <input type="text" id="totpAddName" placeholder="Name (e.g. GitHub:alice)" maxlength="64">
+        </div>
+        <div class="ct-search" style="margin-bottom: var(--ct-sp-2);">
+          <svg class="ct-icon"><use href="#ic-clock"/></svg>
+          <input type="text" id="totpAddSecret" placeholder="Secret key (Base32)" autocomplete="off" spellcheck="false">
+        </div>
+        <div id="totpAddError" class="ct-item-subtitle" style="display:none; color: var(--ct-danger); margin-bottom: var(--ct-sp-2);"></div>
+        <div style="display: flex; gap: var(--ct-sp-2);">
+          <button id="totpAddCancelBtn" class="ct-btn ct-btn-tonal" style="flex: 1;">Cancel</button>
+          <button id="totpAddSubmitBtn" class="ct-btn ct-btn-primary" style="flex: 1;">Add</button>
+        </div>
       </div>
 
       <div id="totpContainer" class="ct-list" style="overflow-y: auto; flex: 1; min-height: 0;">
