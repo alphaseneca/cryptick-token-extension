@@ -1,4 +1,12 @@
-# Popup redesign — notes for review (branch `agent/extension-redesign`)
+# Agent work notes
+
+Chronological log, most recent work at the bottom. Each numbered section
+below was the current state of its own branch (named in its own heading
+where one applies) at the time it was written — treat the heading as
+history, not as this file's scope. Item 1 below is this file's original
+title and scope; later items cover unrelated work that landed afterward.
+
+## Popup redesign (branch `agent/extension-redesign`)
 
 Scope: `popup.html` / `popup.js` rewritten, `background.js` patched for an
 MV3 lifecycle bug, `manifest.json` / `package.json` version bumped. No
@@ -396,3 +404,63 @@ No real browser extension context or hardware was available. Verified by:
 4. End-to-end verification against the real daemon and hardware, per
    11.4 — unavoidable given this sandbox's constraints, flagging again so
    it isn't missed before ship.
+
+## 12. Audit fixes, icon redesign, TOTP entry, and real CI
+
+Four pieces of work, landed in separate commits: an independent audit
+agent's findings, a device icon redesign, the actual "TOTP entry" feature
+gap, and this repo's first real CI.
+
+### 12.1 Audit findings fixed
+- `popup.js`: `d.last_seen` → `d.lastSeen` — the wire field from the daemon
+  is camelCase (`crates/webauthn-host/src/main.rs`'s `DeviceOut`); the
+  snake_case read meant "last seen" never actually rendered.
+- `popup.js`'s `renderDevicePicker`: keyboard focus was lost on every
+  re-render (the picker's DOM gets rebuilt) — now captures/restores
+  `document.activeElement` via a `data-device-id` dataset attribute.
+- `popup.js`'s `loadTotpAccounts`: cleared `activeCountdownIntervals` at
+  the top of the function — without it, every call leaked the previous
+  render's `setInterval` timers.
+- `background.js`: `let nativeMsg = null;` → `let nativeMsg;` — dead
+  initializer, both branches below it always assign before use
+  (ESLint `no-useless-assignment`, caught once real lint existed — see 12.4).
+
+### 12.2 Device icon redesign
+Regenerated `icon-16/48/128.png` and `icon.png` from a custom SVG (device
+body + screen + fingerprint sensor ring, composition borrowed from
+cryptick-token.lovable.app's own favicon, recolored to this extension's
+existing cyan `#00E5FF` palette), rendered via an offscreen `<canvas>` and
+rasterized locally.
+
+### 12.3 TOTP entry (add/delete), the actual feature gap
+Multi-device picker and credential management (item 11) shipped; TOTP
+*account entry* — adding a new TOTP secret, not just calculating codes for
+ones already on the device — did not exist anywhere in this extension or
+in `cryptick-token-daemon`'s `webauthn-host`, even though the firmware's
+OATH `PUT`/`DELETE` instructions were already correct and unchanged.
+
+- `popup.html`: added an inline add-account form on the Authenticator tab
+  (`totpAddBtn`/`totpAddCard`: name + secret fields, cancel/submit).
+- `popup.js`: `setTotpAddCardOpen`, `showTotpAddError`,
+  `handleAddTotpAccount`, `handleDeleteTotpAccount`, and a per-row delete
+  button in `renderTotpList`.
+- `background.js`: added `totp_add`/`totp_delete` to
+  `NATIVE_ACTIONS_WITH_PAYLOAD`.
+- The daemon-side native-host handlers and wire protocol are
+  `cryptick-token-daemon`'s work — see that repo's `NOTES.md`.
+
+Verified with a mock `window.chrome` harness in a browser pane (serving
+this repo over `python3 -m http.server`, injecting `popup.js` into a
+wrapper page). Not yet verified against the real daemon and hardware for
+the same reason as item 11.4/11.5 — no real browser extension load and
+device round-trip from this sandbox.
+
+### 12.4 Real CI, replacing a fake lint stub
+`package.json`'s `lint` script was `echo 'No lint errors'` — always green,
+checked nothing. Replaced with a real `eslint.config.js` (flat config,
+scoped per-file-group for the chrome/browser/WebAuthn globals each file
+actually needs) and `eslint`/`@eslint/js` dependencies. Added
+`.github/workflows/ci.yml`: a `lint` job (real ESLint, which is what
+caught 12.1's dead `nativeMsg` initializer) and a `manifest` job
+validating `manifest.json`'s shape and that every file it and
+`package.json`'s pack script reference actually exists on disk.
