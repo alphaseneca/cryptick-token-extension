@@ -409,8 +409,17 @@
     .ct-btn-tonal { background: var(--ct-surface); color: var(--ct-text); border: 1px solid var(--ct-border-strong); }
     .ct-btn-tonal:hover:not(:disabled) { background: var(--ct-surface-hover); }
 
-    .ct-btn-text { background: none; color: var(--ct-primary); height: auto; padding: 3px 6px; }
+    .ct-btn-text {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: none; border: none; color: var(--ct-primary); height: auto;
+      padding: 3px 6px; border-radius: var(--ct-radius-sm);
+      font-family: inherit; font-weight: 600; letter-spacing: -0.1px;
+      cursor: pointer; white-space: nowrap;
+      transition: background var(--ct-spring);
+    }
     .ct-btn-text:hover:not(:disabled) { background: var(--ct-primary-dim); }
+    .ct-btn-text:focus-visible { box-shadow: 0 0 0 2px var(--ct-primary-border); }
+    .ct-btn-text:disabled { opacity: 0.55; cursor: default; }
     .ct-btn-text.danger { color: var(--ct-danger); }
     .ct-btn-text.danger:hover:not(:disabled) { background: var(--ct-danger-dim); }
 
