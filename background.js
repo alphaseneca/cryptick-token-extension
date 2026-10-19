@@ -16,14 +16,51 @@ let lastStatusFetchTime = 0;
 let isFetchingStatus = false;
 let wasPreviouslyConnected = false;
 
+// `chrome.runtime.sendNativeMessage` is a one-shot exchange: Chrome delivers
+// exactly one reply to the callback, then disconnects -- which, per the
+// Native Messaging host protocol, closes the host's stdin and ends its
+// process. `obtain_uv_token` in webauthn-host (list_credentials,
+// delete_credential) writes an immediate `touch_required` message and then
+// keeps running, waiting on the device's own fingerprint ceremony (up to
+// ~25s), before writing the *real* final result as a second message. Against
+// `sendNativeMessage` specifically, that second message can never arrive:
+// Chrome's implicit disconnect after the first one kills the host process
+// before the user's touch is ever reached, silently losing the real result.
+// Confirmed directly against the native host (bypassing Chrome) that the
+// host-side protocol itself is sound end-to-end when the connection is kept
+// open for both messages.
+//
+// `connectNative` opens the same host via a persistent port that only closes
+// when something explicitly disconnects it, which is what both messages
+// need. Every action goes through it now, not just the two that currently
+// write an interim message, so a future action gaining one doesn't silently
+// regress into this same bug.
 function sendNativeMessage(msg) {
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendNativeMessage(HOST_NAME, msg, (response) => {
-      if (chrome.runtime.lastError) {
-        return reject(new Error(chrome.runtime.lastError.message));
+    let port;
+    try {
+      port = chrome.runtime.connectNative(HOST_NAME);
+    } catch (err) {
+      reject(err);
+      return;
+    }
+    let settled = false;
+    port.onMessage.addListener((response) => {
+      if (settled) return; // a stray message after we've already resolved
+      if (response && response.status === 'touch_required') {
+        chrome.runtime.sendMessage({ type: 'cryptick_touch_pending', requestAction: msg.action }).catch(() => {});
+        return; // interim only -- keep the port open for the real result
       }
+      settled = true;
       resolve(response);
+      port.disconnect();
     });
+    port.onDisconnect.addListener(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error(chrome.runtime.lastError ? chrome.runtime.lastError.message : 'Native host disconnected'));
+    });
+    port.postMessage(msg);
   });
 }
 
@@ -89,6 +126,11 @@ chrome.storage.local.get(['cryptick_cached_status'], (data) => {
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // sendNativeMessage's own `cryptick_touch_pending` broadcast (see above)
+  // reaches this same listener since it's sent via chrome.runtime.sendMessage
+  // -- it's for popup.js, not for dispatch here.
+  if (!request || !request.action) return false;
+
   const { action, payload } = request;
 
   if (action === 'status') {

@@ -252,33 +252,32 @@ function initBridgeToggle() {
 //     the same way the real sign-in ceremony already is (see injected.js's
 //     "Touch your Cryptick Token to verify...").
 // ---------------------------------------------------------------------------
-const CRED_TOUCH_POLL_MS = 1200;
-const CRED_TOUCH_MAX_ATTEMPTS = 40; // ~48s, in line with injected.js's own 60s ceremony timeout
-
-// Sends a native-host-backed action and transparently rides out a
-// `touch_required` response by polling the same request again -- the
-// daemon is expected to keep answering `touch_required` while the token's
-// touch/UV ceremony is still pending, then settle into a terminal status
-// (ok/error) once the user touches the sensor or it times out.
-// `onTouchPending` fires once per pending poll so the caller can show (or
-// keep showing) the "touch your key" state.
+// Sends a native-host-backed action that may answer with an interim
+// `touch_required` message before its real result: background.js's
+// connectNative-backed port now rides that out itself (the daemon keeps the
+// native host's connection open across the user's touch/UV ceremony rather
+// than this function re-sending the request), broadcasting
+// `cryptick_touch_pending` the moment it sees that interim message so this
+// call's caller can show (or keep showing) a "touch your key" state while it
+// awaits the one real response.
 async function sendWithTouchWait(action, payload, onTouchPending) {
-  for (let attempt = 0; attempt <= CRED_TOUCH_MAX_ATTEMPTS; attempt++) {
-    let res;
-    try {
-      res = await chrome.runtime.sendMessage(payload ? { action, payload } : { action });
-    } catch (err) {
-      console.error(`[Cryptick Token] '${action}' could not reach the background service:`, err.message || err);
-      return { status: 'error', message: "Couldn't reach the bridge service." };
-    }
-    if (res && res.status === 'touch_required') {
-      if (onTouchPending) onTouchPending(attempt);
-      await new Promise((resolve) => setTimeout(resolve, CRED_TOUCH_POLL_MS));
-      continue;
-    }
-    return res;
+  let listener;
+  if (onTouchPending) {
+    listener = (msg) => {
+      if (msg && msg.type === 'cryptick_touch_pending' && msg.requestAction === action) {
+        onTouchPending();
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
   }
-  return { status: 'error', message: 'Timed out waiting for your touch.' };
+  try {
+    return await chrome.runtime.sendMessage(payload ? { action, payload } : { action });
+  } catch (err) {
+    console.error(`[Cryptick Token] '${action}' could not reach the background service:`, err.message || err);
+    return { status: 'error', message: "Couldn't reach the bridge service." };
+  } finally {
+    if (listener) chrome.runtime.onMessage.removeListener(listener);
+  }
 }
 
 function initCredentialsTab() {
