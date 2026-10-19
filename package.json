@@ -5,7 +5,7 @@
   "main": "background.js",
   "scripts": {
     "pack": "zip -r -FS cryptick-token-extension-v$npm_package_version.zip manifest.json background.js content.js injected.js popup.html popup.js icon-16.png icon-48.png icon-128.png icon.png -x '*.DS_Store*'",
-    "lint": "echo 'No lint errors'"
+    "lint": "eslint background.js content.js injected.js popup.js"
   },
   "keywords": [
     "webauthn",
@@ -21,5 +21,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/alphaseneca/cryptick-token-extension.git"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0"
   }
 }

@@ -116,7 +116,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     'totp_add', 'totp_delete'
   ];
 
-  let nativeMsg = null;
+  let nativeMsg;
   if (NATIVE_ACTIONS_NO_PAYLOAD.includes(action)) {
     nativeMsg = { action };
   } else if (NATIVE_ACTIONS_WITH_PAYLOAD.includes(action)) {
