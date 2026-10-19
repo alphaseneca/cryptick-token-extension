@@ -806,11 +806,11 @@
           <svg class="ct-icon"><use href="#ic-search"/></svg>
           <input type="text" id="totpSearch" placeholder="Search accounts">
         </div>
-        <button id="totpAddBtn" class="ct-btn ct-btn-tonal" style="height: 34px;" title="Add a new account">
-          <svg class="ct-icon"><use href="#ic-add"/></svg>
+        <button id="totpAddBtn" class="ct-btn ct-btn-primary" style="height: 34px;" title="Add a new account">
+          <svg class="ct-icon" style="color: var(--ct-on-primary);"><use href="#ic-add"/></svg>
         </button>
-        <button id="totpScanBtn" class="ct-btn ct-btn-primary" style="height: 34px;" title="Rescan the token for OATH accounts">
-          <svg class="ct-icon" style="color: var(--ct-on-primary);"><use href="#ic-refresh"/></svg>
+        <button id="totpScanBtn" class="ct-btn ct-btn-tonal" style="height: 34px;" title="Rescan the token for OATH accounts">
+          <svg class="ct-icon"><use href="#ic-refresh"/></svg>
         </button>
       </div>
 
@@ -821,11 +821,10 @@
       <div id="totpAddCard" class="ct-card" hidden style="flex-shrink: 0; margin-bottom: var(--ct-sp-2);">
         <div class="ct-section-title" style="margin-bottom: 6px;">Add account</div>
         <div class="ct-search" style="margin-bottom: var(--ct-sp-2);">
-          <svg class="ct-icon"><use href="#ic-key"/></svg>
           <input type="text" id="totpAddName" placeholder="Name (e.g. GitHub:alice)" maxlength="64">
         </div>
         <div class="ct-search" style="margin-bottom: var(--ct-sp-2);">
-          <svg class="ct-icon"><use href="#ic-clock"/></svg>
+          <svg class="ct-icon"><use href="#ic-key"/></svg>
           <input type="text" id="totpAddSecret" placeholder="Secret key (Base32)" autocomplete="off" spellcheck="false">
         </div>
         <div id="totpAddError" class="ct-item-subtitle" style="display:none; color: var(--ct-danger); margin-bottom: var(--ct-sp-2);"></div>
