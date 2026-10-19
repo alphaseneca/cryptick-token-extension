@@ -464,3 +464,23 @@ actually needs) and `eslint`/`@eslint/js` dependencies. Added
 caught 12.1's dead `nativeMsg` initializer) and a `manifest` job
 validating `manifest.json`'s shape and that every file it and
 `package.json`'s pack script reference actually exists on disk.
+
+## 13. TOTP delete too easy to trigger by accident
+
+Reported from real use, alongside the `cryptick-token-code` session that
+found the actual device-side fingerprint gate wasn't expiring (see that
+repo's NOTES.md) -- but this was a separate, UI-only problem even once
+that's fixed: `handleDeleteTotpAccount` only gated the delete behind a
+plain `window.confirm()` dialog, which is one reflex click/Enter away
+from going through, and looks nothing like the rest of this file's own
+destructive-action pattern.
+
+Replaced it with the same inline two-step confirm `renderCredentialRow`
+already uses for passkey deletion (item 11 above): the delete icon
+swaps the row's actions for a "Delete?" badge plus Cancel/Delete
+buttons in place, in the row itself, and only a second click on Delete
+sends the real request. Copy is shorter than the credential-row version
+("Delete?"/"Delete" vs "Delete from device?"/"Delete from device") --
+checked in a browser pane at the real 360px popup width, where the
+longer copy visibly clipped against this row's longer issuer:account
+labels and the shorter version doesn't.
