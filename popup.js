@@ -644,25 +644,28 @@ async function handleAddTotpAccount() {
   }
 }
 
-async function handleDeleteTotpAccount(name, btn) {
-  if (!confirm(`Remove "${name}" from this token?`)) return;
-  const prevHtml = btn.innerHTML;
-  btn.disabled = true;
+async function executeDeleteTotpAccount(name, actionWrap, resetRowActions) {
+  // No sendWithTouchWait here: unlike delete_credential, totp_delete makes
+  // one blocking native-host call that itself waits out the device's
+  // fingerprint ceremony (up to ~25s) and returns a single final result --
+  // there's no intermediate touch_required status to poll for.
+  actionWrap.innerHTML = touchPendingBadgeHtml();
+
+  let res;
   try {
-    const res = await chrome.runtime.sendMessage({ action: 'totp_delete', payload: { name } });
-    if (res && res.status === 'ok') {
-      showToast(`Removed "${name}"`, 'success');
-      loadTotpAccounts();
-    } else {
-      showToast((res && res.message) || "Couldn't remove account.", 'error');
-      btn.disabled = false;
-      btn.innerHTML = prevHtml;
-    }
+    res = await chrome.runtime.sendMessage({ action: 'totp_delete', payload: { name } });
   } catch (err) {
-    showToast("Couldn't reach the bridge service.", 'error');
-    btn.disabled = false;
-    btn.innerHTML = prevHtml;
+    res = { status: 'error', message: "Couldn't reach the bridge service." };
   }
+
+  if (res && res.status === 'ok') {
+    showToast(`Removed "${name}"`, 'success');
+    loadTotpAccounts();
+    return;
+  }
+
+  showToast((res && res.message) || "Couldn't remove account.", 'error');
+  resetRowActions();
 }
 
 function renderTotpList(accounts) {
@@ -709,6 +712,55 @@ function renderTotpList(accounts) {
     actionWrap.style.flexShrink = '0';
     actionWrap.style.marginLeft = '8px';
 
+    function resetRowActions() {
+      actionWrap.innerHTML = '';
+      actionWrap.appendChild(getBtn);
+      actionWrap.appendChild(delBtn);
+    }
+
+    // Same inline two-step pattern as renderCredentialRow's delete flow: a
+    // destructive hardware action (permanently erases the secret from the
+    // token) shouldn't go through on one click of an icon that sits right
+    // next to "Get code".
+    function triggerDeleteConfirm(e) {
+      if (e && e.stopPropagation) e.stopPropagation();
+      actionWrap.innerHTML = '';
+
+      // Shorter copy than renderCredentialRow's equivalent ("Delete from
+      // device?" / "Delete from device") on purpose: this row's label
+      // column already carries a longer account name (issuer:account, not
+      // just a display name), leaving less width here at the real 360px
+      // popup size before these buttons clip.
+      const warn = document.createElement('span');
+      warn.className = 'ct-badge';
+      warn.style.color = 'var(--ct-danger)';
+      warn.textContent = 'Delete?';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'ct-btn-text';
+      cancelBtn.style.fontSize = 'var(--ct-fs-xs)';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', (ev) => {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        resetRowActions();
+      });
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = 'ct-btn-text danger';
+      confirmBtn.style.fontSize = 'var(--ct-fs-xs)';
+      confirmBtn.style.fontWeight = '700';
+      confirmBtn.textContent = 'Delete';
+      confirmBtn.title = `Permanently delete "${acc}" from the device`;
+      confirmBtn.addEventListener('click', (ev) => {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        executeDeleteTotpAccount(acc, actionWrap, resetRowActions);
+      });
+
+      actionWrap.appendChild(warn);
+      actionWrap.appendChild(cancelBtn);
+      actionWrap.appendChild(confirmBtn);
+    }
+
     const getBtn = document.createElement('button');
     getBtn.className = 'ct-btn ct-btn-tonal';
     getBtn.style.height = '28px';
@@ -722,7 +774,7 @@ function renderTotpList(accounts) {
     delBtn.title = `Remove "${acc}" from this token`;
     delBtn.setAttribute('aria-label', `Remove ${acc} from this token`);
     delBtn.innerHTML = `<svg class="ct-icon" style="width:14px;height:14px;"><use href="#ic-delete"/></svg>`;
-    delBtn.addEventListener('click', () => handleDeleteTotpAccount(acc, delBtn));
+    delBtn.addEventListener('click', triggerDeleteConfirm);
 
     actionWrap.appendChild(getBtn);
     actionWrap.appendChild(delBtn);
